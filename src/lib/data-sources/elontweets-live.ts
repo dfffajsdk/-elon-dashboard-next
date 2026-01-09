@@ -1,4 +1,4 @@
-import { DataSource, DataSourceConfig, Tweet, TweetStatus } from './index';
+import { DataSource, DataSourceConfig, Tweet, TweetStatus, TweetStatusRawResponse } from './index';
 
 
 const config: DataSourceConfig = {
@@ -101,7 +101,7 @@ class ElonTweetsLiveDataSource implements DataSource {
         }
     }
 
-    async getTweetStatus(): Promise<TweetStatus> {
+    async getTweetStatus(): Promise<TweetStatusRawResponse> {
         try {
             // Original: ${BASE_URL}/get_tweet_status?version=2
             const url = `${config.baseUrl}/get_tweet_status?version=2`;
@@ -114,7 +114,7 @@ class ElonTweetsLiveDataSource implements DataSource {
 
             if (!response.ok) {
                 console.error('[DataSource] Tweet status error:', response.status);
-                return {};
+                return { posts: [] };
             }
 
             const data = await response.json();
@@ -124,10 +124,10 @@ class ElonTweetsLiveDataSource implements DataSource {
             if (data && data.code === 0 && data.data) {
                 return data.data;
             }
-            return {};
+            return { posts: [] };
         } catch (error) {
             console.error('[DataSource] getTweetStatus error:', error);
-            return {};
+            return { posts: [] };
         }
     }
 
