@@ -241,12 +241,32 @@ ${recentTweets.join('\n')}
         setIsLoading(true);
 
         try {
+            // ========== RAG: Fetch relevant historical context ==========
+            let ragContext = '';
+            try {
+                const ragResponse = await fetch('/api/rag/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: textToSend, limit: 3 })
+                });
+                const ragData = await ragResponse.json();
+                if (ragData.success && ragData.documents?.length > 0) {
+                    ragContext = '\n\n## 📚 历史记忆 (RAG 检索)\n' +
+                        ragData.documents.map((doc: any) =>
+                            `- [${doc.type}] ${doc.content}`
+                        ).join('\n');
+                    console.log('[RAG] Found', ragData.documents.length, 'relevant documents');
+                }
+            } catch (ragError) {
+                console.warn('[RAG] Search failed (non-critical):', ragError);
+            }
+
             const response = await fetch('/api/gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext(),
+                    context: buildContext() + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content
