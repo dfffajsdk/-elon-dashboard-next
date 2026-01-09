@@ -63,9 +63,11 @@ export function createPeriods(): Period[] {
         { id: 'jan30', endDay: 30, startDay: 23 },
     ];
 
-    const getDayName = (date: Date): string => {
+    const getDayName = (year: number, month: number, day: number): string => {
+        // Create date in UTC to avoid local timezone shifts
+        const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        return days[date.getDay()];
+        return days[date.getUTCDay()];
     };
 
     for (const config of periodConfigs) {
@@ -74,9 +76,26 @@ export function createPeriods(): Period[] {
         const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
         const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
 
-        // GATING LOGIC: Only include periods that have started (current ET time >= start time)
+        // GATING LOGIC: 
+        // 1. Must have started (now >= start)
+        // 2. Must not be expired (now < end) - user requested to "delete" old ones
+        // Using a small buffer (e.g., 1 hour) to ensure smooth transition? No, strictly remove after end.
         if (etNow >= startDate) {
-            const dayName = getDayName(endDate);
+            // If the period has ended, skip it (unless it's the ONLY available one? Logic below handles empty/fallback)
+            // However, strictly adhering to "active" periods means excluding those where etNow > endDate.
+            // But wait, etNow is flawed (Local time representation).
+            // Let's use the REAL absolute current time for comparison.
+
+            const nowAbsolute = new Date();
+
+            // Check if period is strictly in the future
+            if (nowAbsolute < startDate) continue;
+
+            // Check if period is strictly in the past (expired)
+            // User wants to remove old ones.
+            if (nowAbsolute >= endDate) continue;
+
+            const dayName = getDayName(2026, 1, config.endDay);
             const label = `Jan ${config.endDay} ${dayName}`;
 
             periods.push({
@@ -86,6 +105,15 @@ export function createPeriods(): Period[] {
                 endDate,
             });
         }
+    }
+
+    // Fallback: If no ACTIVE periods found (e.g. between periods?), show the next upcoming one or the last expired one?
+    // Given the overlapping schedule (Jan 2-9, Jan 6-13), we should always have an active one.
+    // If somehow empty, maybe show the last one config that passed start check?
+    if (periods.length === 0 && periodConfigs.length > 0) {
+        // Try to find the *next* upcoming period to show as "coming soon" or most recent
+        // Just return empty array and let app handle? Or safest: return the most relevant one.
+        // Let's rely on overlap.
     }
 
     return periods;

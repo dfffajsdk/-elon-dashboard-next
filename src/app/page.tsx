@@ -57,6 +57,8 @@ export default function Home() {
     const all = createPeriods();
     const now = new Date();
     const current = all.find(p => now >= p.startDate && now < p.endDate);
+    // Safety check: if all is empty (shouldn't happen with overlap, but just in case)
+    if (!all.length) return '';
     return current ? current.id : all[0].id;
   });
 
