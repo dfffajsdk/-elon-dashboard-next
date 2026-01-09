@@ -1,0 +1,39 @@
+﻿
+
+StatusCode        : 200
+StatusDescription : OK
+Content           : {"tweets":[{"action":"def
+                    ault","baseid":"200953726
+                    1843452269","jishu":513,"
+                    msg":"RT @visegrad24: The
+                     Somali asylum seeker in 
+                    Denmark Ahmad Omar Mohame
+                    d dragged a 10-year old-d
+                    anish girl into some bush
+                    ...
+RawContent        : HTTP/1.1 200 OK
+                    vary: rsc, next-router-st
+                    ate-tree, next-router-pre
+                    fetch, next-router-segmen
+                    t-prefetch
+                    Connection: keep-alive
+                    Keep-Alive: timeout=5
+                    Transfer-Encoding: chunke
+                    d
+                    Content-Type: applica...
+Forms             : 
+Headers           : {[vary, rsc, next-router-
+                    state-tree, next-router-p
+                    refetch, next-router-segm
+                    ent-prefetch], [Connectio
+                    n, keep-alive], [Keep-Ali
+                    ve, timeout=5], [Transfer
+                    -Encoding, chunked]...}
+Images            : {}
+InputFields       : {}
+Links             : {}
+ParsedHtml        : 
+RawContentLength  : 172063
+
+
+
