@@ -39,20 +39,12 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = React.memo(({ periods, act
 // Helper function to create periods based on US Eastern time noon-to-noon
 // Each period is 7 days from 12:00 PM ET to 12:00 PM ET
 // Tab shows the END date of the period
-// IMPORTANT: Only show tabs that have started (currentTime >= startTime in ET)
+// IMPORTANT: Strict Absolute Time comparison against ET timestamps
 export function createPeriods(): Period[] {
     const periods: Period[] = [];
-
-    // Get current time in ET
-    const now = new Date();
-    const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const now = new Date(); // Current absolute time (UTC-based internally)
 
     // Base periods - each period is 7 days from noon to noon ET
-    // Jan 9 Fri = Jan 2 12:00 PM ET -> Jan 9 12:00 PM ET
-    // Jan 13 Tue = Jan 6 12:00 PM ET -> Jan 13 12:00 PM ET  
-    // Jan 16 Fri = Jan 9 12:00 PM ET -> Jan 16 12:00 PM ET
-    // etc.
-
     const periodConfigs = [
         { id: 'jan9', endDay: 9, startDay: 2 },
         { id: 'jan13', endDay: 13, startDay: 6 },
@@ -65,36 +57,26 @@ export function createPeriods(): Period[] {
 
     const getDayName = (year: number, month: number, day: number): string => {
         // Create date in UTC to avoid local timezone shifts
+        // Use 12:00 UTC just to be safe in middle of day
         const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         return days[date.getUTCDay()];
     };
 
     for (const config of periodConfigs) {
-        // Create dates in ET timezone at 12:00 PM (noon)
-        // 12:00 PM ET = 17:00 UTC (EST is UTC-5)
+        // Create Absolute Dates corresponding to 12:00 PM ET
+        // 12:00 PM ET is always the anchor. 
+        // We use explicit ISO string with -05:00 offset to guarantee it represents ET noon.
         const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
         const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
 
-        // GATING LOGIC: 
-        // 1. Must have started (now >= start)
-        // 2. Must not be expired (now < end) - user requested to "delete" old ones
-        // Using a small buffer (e.g., 1 hour) to ensure smooth transition? No, strictly remove after end.
-        if (etNow >= startDate) {
-            // If the period has ended, skip it (unless it's the ONLY available one? Logic below handles empty/fallback)
-            // However, strictly adhering to "active" periods means excluding those where etNow > endDate.
-            // But wait, etNow is flawed (Local time representation).
-            // Let's use the REAL absolute current time for comparison.
+        // LOGIC:
+        // Show period IF: 
+        // 1. Current Time >= Start Time (It has started)
+        // 2. Current Time < End Time (It has NOT ended yet)
 
-            const nowAbsolute = new Date();
-
-            // Check if period is strictly in the future
-            if (nowAbsolute < startDate) continue;
-
-            // Check if period is strictly in the past (expired)
-            // User wants to remove old ones.
-            if (nowAbsolute >= endDate) continue;
-
+        // This stricter logic ensures expired periods (like Jan 9 when it's Jan 10) are hidden.
+        if (now >= startDate && now < endDate) {
             const dayName = getDayName(2026, 1, config.endDay);
             const label = `Jan ${config.endDay} ${dayName}`;
 
@@ -107,13 +89,38 @@ export function createPeriods(): Period[] {
         }
     }
 
-    // Fallback: If no ACTIVE periods found (e.g. between periods?), show the next upcoming one or the last expired one?
-    // Given the overlapping schedule (Jan 2-9, Jan 6-13), we should always have an active one.
-    // If somehow empty, maybe show the last one config that passed start check?
-    if (periods.length === 0 && periodConfigs.length > 0) {
-        // Try to find the *next* upcoming period to show as "coming soon" or most recent
-        // Just return empty array and let app handle? Or safest: return the most relevant one.
-        // Let's rely on overlap.
+    // FALLBACK: If we are between periods or all finished, show the next upcoming one
+    // or the last one if everything is over.
+    if (periods.length === 0) {
+        // Find first period that hasn't started yet (Upcoming)
+        const upcoming = periodConfigs.find(c => {
+            const start = new Date(`2026-01-${String(c.startDay).padStart(2, '0')}T12:00:00-05:00`);
+            return now < start;
+        });
+
+        if (upcoming) {
+            const start = new Date(`2026-01-${String(upcoming.startDay).padStart(2, '0')}T12:00:00-05:00`);
+            const end = new Date(`2026-01-${String(upcoming.endDay).padStart(2, '0')}T12:00:00-05:00`);
+            periods.push({
+                id: upcoming.id,
+                label: `Jan ${upcoming.endDay} ${getDayName(2026, 1, upcoming.endDay)}`,
+                startDate: start,
+                endDate: end
+            });
+        } else {
+            // Everyone has started. Show the last one? Or finding the one that *just* expired?
+            // If Jan 13 period ends Jan 13, and Jan 16 starts Jan 9, there shouldn't be gaps unless configs are wrong.
+            // But if somehow empty, default to the last configured period.
+            const last = periodConfigs[periodConfigs.length - 1];
+            const start = new Date(`2026-01-${String(last.startDay).padStart(2, '0')}T12:00:00-05:00`);
+            const end = new Date(`2026-01-${String(last.endDay).padStart(2, '0')}T12:00:00-05:00`);
+            periods.push({
+                id: last.id,
+                label: `Jan ${last.endDay} ${getDayName(2026, 1, last.endDay)}`,
+                startDate: start,
+                endDate: end
+            });
+        }
     }
 
     return periods;

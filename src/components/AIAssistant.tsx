@@ -65,96 +65,148 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ dashboardData }) => {
         }
     }, [isOpen]);
 
-    // Build context from dashboard data
+    // Build context from dashboard data - ALL IN ET TIMEZONE
     const buildContext = () => {
         const now = new Date();
+
+        // Format helper for ET
+        const formatET = (date: Date, options?: Intl.DateTimeFormatOptions) => {
+            return date.toLocaleString('zh-CN', { timeZone: 'America/New_York', ...options });
+        };
+
+        const formatTimeET = (date: Date) => formatET(date, { hour: '2-digit', minute: '2-digit', hour12: false });
+        const formatDateET = (date: Date) => formatET(date, { month: 'numeric', day: 'numeric' });
+        const formatFullET = (date: Date) => `${formatDateET(date)} ${formatTimeET(date)} ET`;
+
+        // Current ET time
+        const nowET = formatFullET(now);
+
         const timeRemaining = Math.max(0, dashboardData.periodEnd.getTime() - now.getTime());
         const daysRemaining = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
         const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-        // Get recent tweets timestamps for context - use timestr if available
-        const recentTweets = dashboardData.tweets.slice(0, 15).map(t => {
-            let timeStr = 'Unknown time';
-            if (t.timestr) {
-                const date = new Date(t.timestr * 1000);
-                timeStr = date.toLocaleString('zh-CN', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-            } else if (t.timestamp) {
-                const ts = typeof t.timestamp === 'number' ? t.timestamp : parseInt(t.timestamp);
-                if (!isNaN(ts)) {
-                    const date = new Date(ts * 1000);
-                    timeStr = date.toLocaleString('zh-CN', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                }
-            }
-            const content = t.msg || t.text || 'No text';
-            return `[${timeStr}] ${content.substring(0, 50)}...`;
-        });
 
         // Calculate daily rate
         const elapsedMs = now.getTime() - dashboardData.periodStart.getTime();
         const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
         const dailyRate = elapsedDays > 0 ? (dashboardData.tweetCount / elapsedDays).toFixed(1) : 0;
 
-        // Hourly Distribution (Intraday) for the latest active day
-        const hourlyCounts: Record<string, number> = {};
-        if (dashboardData.tweets.length > 0) {
-            // Assume tweets are sorted desc, take the first one's date as "Subject Day"
-            const latestTweet = dashboardData.tweets[0];
-            let latestDateStr = '';
+        // Helper to get timestamp from tweet
+        const getTimestamp = (t: any): number => {
+            let ts = t.timestr || t.timestamp;
+            if (typeof ts === 'string' && /^\d+$/.test(ts)) ts = parseInt(ts);
+            return typeof ts === 'number' ? ts : 0;
+        };
 
-            // Helper to get date string ET
-            const getEtDate = (t: any) => {
-                let ts = t.timestr || t.timestamp;
-                if (typeof ts === 'string' && /^\d+$/.test(ts)) ts = parseInt(ts);
-                if (typeof ts === 'number') {
-                    return new Date(ts * 1000).toLocaleDateString("en-US", { timeZone: 'America/New_York' });
-                }
-                return '';
-            };
+        // Helper to get ET hour (0-23)
+        const getETHour = (timestamp: number): number => {
+            const date = new Date(timestamp * 1000);
+            return parseInt(date.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }));
+        };
 
-            latestDateStr = getEtDate(latestTweet);
+        // ========== HOURLY ACTIVITY PATTERN ==========
+        const hourlyTotals: Record<number, number> = {};
+        for (let h = 0; h < 24; h++) hourlyTotals[h] = 0;
 
-            dashboardData.tweets.forEach(t => {
-                const dateStr = getEtDate(t);
-                if (dateStr === latestDateStr) {
-                    let ts = t.timestr || t.timestamp;
-                    if (typeof ts === 'string' && /^\d+$/.test(ts)) ts = parseInt(ts);
-                    if (typeof ts === 'number') {
-                        const date = new Date(ts * 1000);
-                        const hour = date.toLocaleTimeString("en-US", { timeZone: 'America/New_York', hour: '2-digit', hour12: false });
-                        const key = `${hour}:00`;
-                        hourlyCounts[key] = (hourlyCounts[key] || 0) + 1;
-                    }
-                }
-            });
+        dashboardData.tweets.forEach(t => {
+            const ts = getTimestamp(t);
+            if (ts > 0) {
+                const hour = getETHour(ts);
+                hourlyTotals[hour] = (hourlyTotals[hour] || 0) + 1;
+            }
+        });
+
+        // Identify peak and quiet hours
+        const sortedHours = Object.entries(hourlyTotals).sort((a, b) => b[1] - a[1]);
+        const peakHours = sortedHours.slice(0, 5).map(([h, c]) => `${h}:00(${c}条)`).join(', ');
+        const quietHours = sortedHours.slice(-5).reverse().map(([h, c]) => `${h}:00(${c}条)`).join(', ');
+
+        const hourlyPatternStr = Object.entries(hourlyTotals)
+            .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+            .filter(([_, count]) => count > 0)
+            .map(([hour, count]) => `${hour}:00=${count}`)
+            .join(', ');
+
+        // ========== MULTI-WINDOW MOMENTUM ==========
+        const nowTs = Math.floor(now.getTime() / 1000);
+        const windows = [1, 3, 6, 12]; // hours
+        const momentumResults: string[] = [];
+
+        windows.forEach(hours => {
+            const windowStart = nowTs - hours * 3600;
+            const windowTweets = dashboardData.tweets.filter(t => {
+                const ts = getTimestamp(t);
+                return ts > windowStart && ts <= nowTs;
+            }).length;
+
+            const expectedAvg = elapsedDays > 0 ? (dashboardData.tweetCount / (elapsedDays * 24)) * hours : 0;
+            const ratio = expectedAvg > 0 ? windowTweets / expectedAvg : 1;
+
+            let status = '正常';
+            if (ratio > 1.5) status = '🔥爆发';
+            else if (ratio > 1.2) status = '↗偏高';
+            else if (ratio < 0.5) status = '😴低迷';
+            else if (ratio < 0.8) status = '↘偏低';
+
+            momentumResults.push(`最近${hours}h: ${windowTweets}条 (${status})`);
+        });
+
+        // ========== TIME-REMAINING BREAKDOWN ==========
+        // Count remaining "active" vs "inactive" hours
+        // Define quiet hours as 03:00-08:00 ET (sleep) and 12:00-13:00 ET (lunch)
+        let activeHoursRemaining = 0;
+        let inactiveHoursRemaining = 0;
+
+        for (let i = 0; i < hoursRemaining + daysRemaining * 24; i++) {
+            const futureTime = new Date(now.getTime() + i * 3600 * 1000);
+            const futureETHour = parseInt(futureTime.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }));
+
+            // Quiet hours: 3-8 (sleep), 12-13 (lunch)
+            if ((futureETHour >= 3 && futureETHour < 8) || (futureETHour >= 12 && futureETHour < 13)) {
+                inactiveHoursRemaining++;
+            } else {
+                activeHoursRemaining++;
+            }
         }
 
-        const hourlyStats = Object.entries(hourlyCounts)
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([hour, count]) => `- ${hour} ET: ${count} 条`)
-            .join('\n');
+        // ========== RECENT TWEETS (Last 15) ==========
+        const recentTweets = dashboardData.tweets.slice(0, 15).map(t => {
+            const ts = getTimestamp(t);
+            const timeStr = ts > 0 ? formatFullET(new Date(ts * 1000)) : '未知';
+            const content = t.msg || t.text || 'No text';
+            return `[${timeStr}] ${content.substring(0, 50)}...`;
+        });
 
-        // Milestones
+        // ========== MILESTONES ==========
         const currentMilestone = dashboardData.milestones?.find((m: any) => m.status === 'current');
         const nextMilestone = dashboardData.milestones?.find((m: any) => m.status === 'future');
         const milestoneInfo = currentMilestone
             ? `当前目标: ${currentMilestone.target}, 缺口: ${currentMilestone.deficit}`
             : (nextMilestone ? `下一个目标: ${nextMilestone.target}` : '所有目标已完成');
 
-        // Pacing
+        // ========== PACING ==========
         const pacingInfo = dashboardData.pacing?.map((p: any) => `${p.label}: ${p.value}`).join('\n- ');
 
         return `
 你是一个专业的Elon Musk推文数据分析师。根据实时看板数据回答用户问题。
+⚠️ **重要：所有分析和时间均以美国东部时间 (ET) 为准。**
 
-## 📊 核心看板数据 (截止目前)
-- **当前周期**: ${dashboardData.periodStart.toLocaleDateString('zh-CN')} 至 ${dashboardData.periodEnd.toLocaleDateString('zh-CN')}
+## ⏰ 当前时间 (ET)
+${nowET}
+
+## 📊 核心看板数据
+- **当前周期**: ${formatDateET(dashboardData.periodStart)} 12:00 ET 至 ${formatDateET(dashboardData.periodEnd)} 12:00 ET
 - **已发推文**: ${dashboardData.tweetCount} 条
 - **时间进度**: ${dashboardData.progress}%
-- **剩余时间**: ${daysRemaining}天 ${hoursRemaining}小时
-- **当前速率**: ${dailyRate} 条/天
+- **剩余时间**: ${daysRemaining}天 ${hoursRemaining}小时 (其中约 ${activeHoursRemaining}小时活跃时段, ${inactiveHoursRemaining}小时低迷时段)
+- **整体速率**: ${dailyRate} 条/天
 
-## 📈 今日分时活跃度 (Latest Day ET)
-${hourlyStats || '暂无今日数据'}
+## 📈 分时活跃度 (本周期 ET)
+${hourlyPatternStr || '暂无数据'}
+- **高峰时段**: ${peakHours || '待分析'}
+- **低迷时段**: ${quietHours || '待分析'}
+
+## 🔥 实时动量分析
+${momentumResults.join('\n')}
 
 ## 🎯 里程碑追踪
 - ${milestoneInfo}
@@ -162,14 +214,15 @@ ${hourlyStats || '暂无今日数据'}
 ## ⏱️ 活跃度节奏
 - ${pacingInfo || '暂无数据'}
 
-## 📝 最近15条推文 (美东时间)
+## 📝 最近15条推文 (ET时间)
 ${recentTweets.join('\n')}
 
-## 回答原则
-1. **数据驱动**: 必须引用具体数字(如分时统计)来支持你的分析。
-2. **简明扼要**: 直接回答问题，不要废话。
-3. **预测逻辑**: 如果预测，基于当前速率 (${dailyRate}条/天) 和剩余时间进行估算。
-4. **格式**: 使用 Markdown，重点数字加粗。
+## 🧠 预测原则 (非常重要!)
+1. **禁止简单外推**: 不要用 "当前速率 × 剩余时间" 做预测，这种方法会被马斯克的作息节奏欺骗。
+2. **参考分时规律**: 如果当前是低迷时段（如凌晨3-8点ET），不要因为"最近几小时没发"就降低预测。
+3. **动量权重**: 爆发期(🔥)可适当提高预测，低迷期(😴)如果在正常活跃时段则降低预测。
+4. **给出区间**: 预测应给出合理区间，如 "570-590条"，而非精确数字。
+5. **解释推理**: 告诉用户你为什么这样预测，引用具体的分时数据和动量。
 `;
     };
 

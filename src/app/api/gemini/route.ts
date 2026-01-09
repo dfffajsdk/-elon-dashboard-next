@@ -18,11 +18,21 @@ export async function POST(request: Request) {
 
         console.log(`[AI] Processing request: "${message.substring(0, 50)}..."`);
 
+        // Get current ET time for context
+        const nowET = new Date().toLocaleString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
         // Build messages array with context and history
         const messages = [
             {
                 role: 'system',
-                content: context || '你是一个专业的马斯克推文分析助手，帮助用户分析推文趋势和预测。请用中文回复。'
+                content: context || `你是一个专业的马斯克推文分析助手。当前美东时间(ET): ${nowET}。所有分析必须以美东时间为准。请用中文回复。`
             },
             ...history.map((h: { role: string; content: string }) => ({
                 role: h.role === 'user' ? 'user' : 'assistant',
