@@ -1,4 +1,4 @@
-import { DataSource, DataSourceConfig, Tweet, TweetStatus } from './index';
+import { DataSource, DataSourceConfig, Tweet, TweetStatus, TweetStatusRawResponse } from './index';
 
 // Placeholder for future Telegram bot integration
 // This will be implemented when switching from elontweets.live
@@ -22,7 +22,7 @@ class TelegramBotDataSource implements DataSource {
         throw new Error('Telegram bot data source not yet implemented');
     }
 
-    async getTweetStatus(): Promise<TweetStatus> {
+    async getTweetStatus(): Promise<TweetStatusRawResponse> {
         // TODO: Implement Telegram bot API call
         throw new Error('Telegram bot data source not yet implemented');
     }
