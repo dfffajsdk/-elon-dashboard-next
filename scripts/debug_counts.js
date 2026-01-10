@@ -18,7 +18,8 @@ async function checkJan9Period() {
     // Fetch ALL tweets locally to filter
     const { data: allTweets, error } = await supabase
         .from('cached_tweets')
-        .select('*');
+        .select('*')
+        .limit(5000);
 
     if (error) {
         console.error('Error:', error);

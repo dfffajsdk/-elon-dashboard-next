@@ -8,10 +8,10 @@ const path = require('path');
 
 // All data sources
 const DATA_SOURCES = [
-    { path: path.join(__dirname, '..', '..', 'elon_max_data.json'), name: 'elon_max_data' },
-    { path: path.join(__dirname, '..', '..', 'elon_one_year.json'), name: 'elon_one_year' },
     { path: path.join(__dirname, '..', 'public', 'cache', 'tweets.json'), name: 'tweets.json' },
     { path: path.join(__dirname, '..', '..', 'elontweets_complete.json'), name: 'elontweets_complete' },
+    { path: path.join(__dirname, '..', '..', 'elon_max_data.json'), name: 'elon_max_data' },
+    { path: path.join(__dirname, '..', '..', 'elon_one_year.json'), name: 'elon_one_year' },
     { path: path.join(__dirname, '..', '..', 'elon_all_data.json'), name: 'elon_all_data' },
 ];
 

@@ -137,7 +137,9 @@ export async function getAllPeriodStats(): Promise<PeriodStats[]> {
     try {
         const { data } = await client
             .from('cached_tweets')
-            .select('created_at, msg, text, is_reply');
+            .select('created_at, msg, text, is_reply')
+            .order('created_at', { ascending: false })
+            .limit(5000); // Ensure we get all tweets (default is 1000)
         if (data) allTweets = data;
     } catch (e) {
         console.error('[Cache] Failed to fetch all tweets for stats:', e);
