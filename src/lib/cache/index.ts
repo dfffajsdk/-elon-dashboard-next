@@ -26,24 +26,30 @@ function getClient(): SupabaseClient | null {
 // CACHE COUNT OPERATIONS
 // =============================================
 
+// Each period is 7 days
+const PERIOD_DURATION = 7 * 24 * 60 * 60; // 7 days in seconds
+
 export async function getCachedCount(periodStart: number): Promise<{ count: number; mt_count?: number } | null> {
     const client = getClient();
     if (!client) return null;
 
     try {
-        const { data, error } = await client
-            .from('cached_counts')
-            .select('count, mt_count')
-            .eq('period_start', periodStart)
-            .single();
+        const periodEnd = periodStart + PERIOD_DURATION;
 
-        if (error || !data) {
-            console.log('[Cache] No cached count for period', periodStart);
+        // Count tweets within this period's time range
+        const { count, error } = await client
+            .from('cached_tweets')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', periodStart)
+            .lt('created_at', periodEnd);
+
+        if (error) {
+            console.log('[Cache] Count query error:', error);
             return null;
         }
 
-        console.log('[Cache] Found cached count:', data.count);
-        return { count: data.count, mt_count: data.mt_count };
+        console.log('[Cache] Found cached count for period:', count);
+        return { count: count || 0 };
     } catch (error) {
         console.error('[Cache] getCachedCount error:', error);
         return null;
@@ -86,19 +92,23 @@ export async function getCachedTweets(periodStart: number, limit: number = 100):
     if (!client) return [];
 
     try {
+        const periodEnd = periodStart + PERIOD_DURATION;
+
+        // Get tweets within this period's time range
         const { data, error } = await client
             .from('cached_tweets')
             .select('*')
-            .eq('period_start', periodStart)
+            .gte('created_at', periodStart)
+            .lt('created_at', periodEnd)
             .order('created_at', { ascending: false })
             .limit(limit);
 
         if (error || !data) {
-            console.log('[Cache] No cached tweets for period', periodStart);
+            console.log('[Cache] No cached tweets for period range', periodStart, '-', periodEnd);
             return [];
         }
 
-        console.log('[Cache] Found', data.length, 'cached tweets');
+        console.log('[Cache] Found', data.length, 'cached tweets in period range');
 
         // Convert cached data back to Tweet format
         return data.map(row => ({
