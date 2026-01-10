@@ -261,12 +261,35 @@ ${recentTweets.join('\n')}
                 console.warn('[RAG] Search failed (non-critical):', ragError);
             }
 
+            // ========== Period Stats: Fetch historical period data ==========
+            let periodStatsContext = '';
+            try {
+                const statsResponse = await fetch('/api/period-stats');
+                const statsData = await statsResponse.json();
+                if (statsData.success && statsData.periods?.length > 0) {
+                    const periodLines = statsData.periods.map((p: any) => {
+                        const startDate = new Date(p.startDate).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', timeZone: 'America/New_York'
+                        });
+                        const endDate = new Date(p.endDate).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', timeZone: 'America/New_York'
+                        });
+                        const statusEmoji = p.status === 'ended' ? '✅' : p.status === 'active' ? '🔄' : '⏳';
+                        return `${statusEmoji} ${p.label}周期 (${startDate} 12pm ET - ${endDate} 12pm ET): ${p.count}条推文 [${p.status}]`;
+                    });
+                    periodStatsContext = '\n\n## 📊 所有周期统计 (从数据库实时计算)\n' + periodLines.join('\n');
+                    console.log('[PeriodStats] Got stats for', statsData.periods.length, 'periods');
+                }
+            } catch (statsError) {
+                console.warn('[PeriodStats] Fetch failed (non-critical):', statsError);
+            }
+
             const response = await fetch('/api/gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext() + ragContext,
+                    context: buildContext() + periodStatsContext + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content

@@ -87,6 +87,85 @@ export async function saveCachedCount(periodStart: number, count: number, mtCoun
 // CACHE TWEETS OPERATIONS
 // =============================================
 
+// Period configurations (same as PeriodSelector)
+const PERIOD_CONFIGS = [
+    { id: 'jan9', label: 'Jan 9', startDay: 2, endDay: 9 },
+    { id: 'jan13', label: 'Jan 13', startDay: 6, endDay: 13 },
+    { id: 'jan16', label: 'Jan 16', startDay: 9, endDay: 16 },
+    { id: 'jan20', label: 'Jan 20', startDay: 13, endDay: 20 },
+    { id: 'jan23', label: 'Jan 23', startDay: 16, endDay: 23 },
+    { id: 'jan27', label: 'Jan 27', startDay: 20, endDay: 27 },
+    { id: 'jan30', label: 'Jan 30', startDay: 23, endDay: 30 },
+];
+
+export interface PeriodStats {
+    id: string;
+    label: string;
+    startDate: string;
+    endDate: string;
+    count: number;
+    status: 'ended' | 'active' | 'upcoming';
+}
+
+/**
+ * Get statistics for all periods based on cached tweet data
+ */
+export async function getAllPeriodStats(): Promise<PeriodStats[]> {
+    const client = getClient();
+    if (!client) return [];
+
+    const now = new Date();
+    const results: PeriodStats[] = [];
+
+    for (const config of PERIOD_CONFIGS) {
+        // Create timestamps for period (12:00 PM ET = 17:00 UTC in winter)
+        const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
+        const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
+
+        const startTs = Math.floor(startDate.getTime() / 1000);
+        const endTs = Math.floor(endDate.getTime() / 1000);
+
+        // Determine status
+        let status: 'ended' | 'active' | 'upcoming';
+        if (now >= endDate) {
+            status = 'ended';
+        } else if (now >= startDate) {
+            status = 'active';
+        } else {
+            status = 'upcoming';
+        }
+
+        // Count tweets in this period
+        try {
+            const { count, error } = await client
+                .from('cached_tweets')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', startTs)
+                .lt('created_at', endTs);
+
+            results.push({
+                id: config.id,
+                label: config.label,
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                count: error ? 0 : (count || 0),
+                status
+            });
+        } catch {
+            results.push({
+                id: config.id,
+                label: config.label,
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                count: 0,
+                status
+            });
+        }
+    }
+
+    return results;
+}
+
 export async function getCachedTweets(periodStart: number, limit: number = 100): Promise<Tweet[]> {
     const client = getClient();
     if (!client) return [];
