@@ -107,8 +107,9 @@ async def sync_to_supabase(parsed):
     if not parsed or not parsed['created_at']: 
         return
     
-    # Calculate period_start (Jan 9 2026 12pm ET = 1767373200)
-    ref_start = 1767373200 
+    # Calculate period_start (Tuesday Dec 23 2025 12pm ET = 1766509200)
+    # This aligns with the User's "Tuesday to Tuesday" cycle requirement
+    ref_start = 1766509200 
     diff = parsed['created_at'] - ref_start
     weeks = diff // (7 * 24 * 3600)
     period_start = ref_start + (weeks * 7 * 24 * 3600)
