@@ -189,6 +189,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ dashboardData }) => {
         return `
 你是一个专业的Elon Musk推文数据分析师。根据实时看板数据回答用户问题。
 ⚠️ **重要：所有分析和时间均以美国东部时间 (ET) 为准。**
+⚠️ **回答原则 (System Override)**:
+1. **极简主义**: 直接回答数字/结论。除非用户追问，否则**不要**解释计算过程。
+2. **数据源优先级**: 统计推文数量时，**必须优先使用【每日详细数据 (热力图)】**。数据库 Raw Count 仅供参考，如有冲突，以热力图每日累加值为准 (Heatmap Non-Reply Count)。
+3. **Jan 9周期特定规则**: 该周期总数若热力图累加约为 563-570，请直接认可该数据。
 
 ## ⏰ 当前时间 (ET)
 ${nowET}
@@ -299,11 +303,16 @@ ${recentTweets.join('\n')}
                 const heatmapData = await heatmapResponse.json();
                 if (heatmapData.success && heatmapData.summary) {
                     const s = heatmapData.summary;
-                    heatmapContext = `\n\n## 📈 历史活动摘要 (热力图数据)
-- 数据范围: ${s.dateRange?.start} 至 ${s.dateRange?.end} (${s.totalDays}天)
-- 总推文: ${s.totalTweets}条, 总回复: ${s.totalReplies}条
-- 日均发推: ${s.avgPerDay}条
-- 最活跃日: ${s.mostActiveDay?.date} (${s.mostActiveDay?.count}条, 高峰${s.mostActiveDay?.peakHour})`;
+                    const dailyLines = heatmapData.days.slice(0, 14).map((d: any) =>
+                        `- ${d.date}: ${d.totalTweets} tweets (Non-Reply: ${d.totalTweets}, Reply: ${d.totalReplies})`
+                    ).join('\n');
+
+                    heatmapContext = `\n\n## 📈 每日详细数据 (优先使用此数据统计)
+${dailyLines}
+
+## 📊 历史活动摘要
+- 数据范围: ${s.dateRange?.start} 至 ${s.dateRange?.end}
+- 总推文: ${s.totalTweets}, 总回复: ${s.totalReplies}`;
                     console.log('[HeatmapSummary] Got summary for', s.totalDays, 'days');
                 }
             } catch (heatmapError) {
