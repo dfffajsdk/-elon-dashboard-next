@@ -241,7 +241,16 @@ async def main():
     
     if session_string:
         print("🔐 Using Session String from Environment...")
-        client = TelegramClient(StringSession(session_string), API_ID, API_HASH)
+        # Clean up string (remove newlines/spaces potentially copied by accident)
+        clean_session = session_string.replace('\n', '').replace(' ', '').strip()
+        
+        try:
+            # Ensure API_ID is int
+            api_id_int = int(API_ID)
+            client = TelegramClient(StringSession(clean_session), api_id_int, API_HASH)
+        except Exception as e:
+            print(f"❌ Session Init Error: {e}")
+            return
     else:
         # Fallback to local session file
         print("📂 Using Local Session File...")
