@@ -303,7 +303,8 @@ ${recentTweets.join('\n')}
                 const heatmapData = await heatmapResponse.json();
                 if (heatmapData.success && heatmapData.summary) {
                     const s = heatmapData.summary;
-                    const dailyLines = heatmapData.days.slice(0, 14).map((d: any) =>
+                    // INCREASED LIMIT: Show last 60 days to cover Dec/Nov quarters
+                    const dailyLines = heatmapData.days.slice(0, 60).map((d: any) =>
                         `- ${d.date}: ${d.totalTweets} tweets (Non-Reply: ${d.totalTweets}, Reply: ${d.totalReplies})`
                     ).join('\n');
 
