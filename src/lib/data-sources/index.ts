@@ -29,4 +29,4 @@ export interface DataSource {
 }
 
 // Export the active data source (can be switched by changing this import)
-export { elonTweetsLive as activeDataSource } from './elontweets-live';
+export { localDatabase as activeDataSource } from './database';
