@@ -14,9 +14,12 @@ export async function GET(request: Request) {
         const tweets = await activeDataSource.getTweets(limit, periodStart);
 
         // Step 2: If API returned data, save to cache
-        if (tweets.length > 0 && periodStart) {
-            console.log('[API] Got', tweets.length, 'tweets from API');
-            await saveCachedTweets(periodStart, tweets);
+        if (tweets.length > 0) {
+            console.log('[API] Got', tweets.length, 'tweets from API, saving to cache...');
+            // Save with periodStart if available, otherwise use 0 (default/all)
+            // Fire and forget
+            saveCachedTweets(periodStart || 0, tweets).catch(err => console.error('[API] Failed to save tweets cache:', err));
+
             return NextResponse.json({ tweets });
         }
 

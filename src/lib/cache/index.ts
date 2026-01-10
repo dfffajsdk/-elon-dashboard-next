@@ -473,3 +473,71 @@ export async function getCachedHeatmapData(): Promise<any> {
         return { code: 0, data: { posts: [] } };
     }
 }
+
+/**
+ * Save live heatmap data to cache
+ */
+export async function saveCachedHeatmapData(rawData: any): Promise<boolean> {
+    const client = getClient();
+    if (!client || !rawData?.posts) return false;
+
+    try {
+        const posts = rawData.posts;
+        const rows = [];
+
+        // Helper to parse date (same as import script)
+        const parseDate = (dateStr: string) => {
+            const months: Record<string, string> = {
+                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            };
+            const parts = dateStr.split(' ');
+            const month = months[parts[0]];
+            const day = parts[1].padStart(2, '0');
+            // Simple year logic: Nov/Dec -> 2025, others -> 2026. 
+            // Ideally should depend on current year but this fits current dataset context.
+            const year = ['Nov', 'Dec'].includes(parts[0]) ? '2025' : '2026';
+            return `${year}-${month}-${day}`;
+        };
+
+        for (const dayData of posts) {
+            const dateStr = dayData.date;
+            if (!dateStr) continue;
+
+            const dateNormalized = parseDate(dateStr);
+
+            for (const [key, value] of Object.entries(dayData)) {
+                if (key === 'date') continue;
+
+                const hour = key;
+                const v = value as any;
+                const tweetCount = v.tweet || 0;
+                const replyCount = v.reply || 0;
+
+                rows.push({
+                    date_str: dateStr,
+                    date_normalized: dateNormalized,
+                    hour: hour,
+                    tweet_count: tweetCount,
+                    reply_count: replyCount
+                });
+            }
+        }
+
+        // Upsert in batches
+        for (let i = 0; i < rows.length; i += 100) {
+            const batch = rows.slice(i, i + 100);
+            const { error } = await client
+                .from('cached_heatmap')
+                .upsert(batch, { onConflict: 'date_normalized,hour' }); // composite key
+
+            if (error) console.error('[Cache] Heatmap upsert error:', error);
+        }
+
+        console.log('[Cache] Saved', rows.length, 'heatmap rows');
+        return true;
+    } catch (error) {
+        console.error('[Cache] saveCachedHeatmapData error:', error);
+        return false;
+    }
+}

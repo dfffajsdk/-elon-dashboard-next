@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { activeDataSource } from '@/lib/data-sources';
-import { getCachedHeatmapData } from '@/lib/cache';
+import { getCachedHeatmapData, saveCachedHeatmapData } from '@/lib/cache';
 
 // GET /api/tweet-status
 export async function GET() {
@@ -13,6 +13,10 @@ export async function GET() {
             const cached = await getCachedHeatmapData();
             return NextResponse.json(cached);
         }
+
+        // Save live data to cache asynchronously (fire and forget)
+        console.log('[API] Got live heatmap, saving to cache...');
+        saveCachedHeatmapData(status).catch(err => console.error('[API] Failed to save heatmap cache:', err));
 
         return NextResponse.json(status);
     } catch (error) {
