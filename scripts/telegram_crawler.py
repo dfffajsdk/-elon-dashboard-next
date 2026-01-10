@@ -183,9 +183,22 @@ async def rebuild_heatmap():
         
     print("🔥 Heatmap rebuild complete!")
 
+from telethon.sessions import StringSession
+
 async def main():
     print("🚀 Starting Telegram Crawler & Repair...")
-    client = TelegramClient('elon_crawler_session', API_ID, API_HASH)
+    
+    # Check if we have a session string (from GitHub Secrets)
+    session_string = os.getenv('TG_SESSION_STRING')
+    
+    if session_string:
+        print("🔐 Using Session String from Environment...")
+        client = TelegramClient(StringSession(session_string), API_ID, API_HASH)
+    else:
+        # Fallback to local session file
+        print("📂 Using Local Session File...")
+        client = TelegramClient('elon_crawler_session', API_ID, API_HASH)
+        
     await client.start()
     
     try:
