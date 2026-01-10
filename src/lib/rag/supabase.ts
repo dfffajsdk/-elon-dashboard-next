@@ -1,10 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
-// Use service key for server-side operations (storing embeddings)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Lazy initialization to prevent errors when env vars are missing
+let _supabaseAdmin: SupabaseClient | null = null;
+
+function getSupabaseAdmin(): SupabaseClient | null {
+    if (!supabaseUrl || !supabaseServiceKey) {
+        console.warn('[RAG] Supabase not configured - SUPABASE_URL or SUPABASE_SERVICE_KEY missing');
+        return null;
+    }
+    if (!_supabaseAdmin) {
+        _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    }
+    return _supabaseAdmin;
+}
+
+// Export for backward compatibility (but may be null if not configured)
+export const supabaseAdmin = { getClient: getSupabaseAdmin };
 
 // Document types for RAG
 export type DocumentType = 'period_summary' | 'prediction' | 'feedback' | 'tweet_pattern';
@@ -23,7 +37,12 @@ export interface MemoryDocument {
  */
 export async function storeDocument(doc: MemoryDocument, embedding: number[]): Promise<{ success: boolean; error?: string }> {
     try {
-        const { error } = await supabaseAdmin
+        const client = getSupabaseAdmin();
+        if (!client) {
+            return { success: false, error: 'Supabase not configured' };
+        }
+
+        const { error } = await client
             .from('memory_documents')
             .insert({
                 type: doc.type,
@@ -53,8 +72,14 @@ export async function searchSimilar(
     typeFilter?: DocumentType
 ): Promise<MemoryDocument[]> {
     try {
+        const client = getSupabaseAdmin();
+        if (!client) {
+            console.warn('[RAG] Search skipped - Supabase not configured');
+            return [];
+        }
+
         // Use Supabase's built-in vector similarity search
-        const { data, error } = await supabaseAdmin.rpc('match_documents', {
+        const { data, error } = await client.rpc('match_documents', {
             query_embedding: queryEmbedding,
             match_threshold: 0.7,
             match_count: limit,
@@ -78,7 +103,13 @@ export async function searchSimilar(
  */
 export async function getRecentDocuments(type: DocumentType, limit: number = 10): Promise<MemoryDocument[]> {
     try {
-        const { data, error } = await supabaseAdmin
+        const client = getSupabaseAdmin();
+        if (!client) {
+            console.warn('[RAG] Get recent skipped - Supabase not configured');
+            return [];
+        }
+
+        const { data, error } = await client
             .from('memory_documents')
             .select('*')
             .eq('type', type)
