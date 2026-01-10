@@ -11,7 +11,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 let _client: SupabaseClient | null = null;
 
-function getClient(): SupabaseClient | null {
+export function getClient(): SupabaseClient | null {
     if (!supabaseUrl || !supabaseServiceKey) {
         console.warn('[Cache] Supabase not configured');
         return null;

@@ -328,6 +328,52 @@ ${dailyList}`;
                 console.warn('[RAG] Search failed (non-critical):', ragError);
             }
 
+            // ========== Prediction: Get trend, patterns, and forecasts ==========
+            let predictionContext = '';
+            try {
+                const predictionUrl = `/api/ai-predict?currentTweets=${dashboardData.tweetCount}&periodStart=${dashboardData.periodStart.toISOString()}&periodEnd=${dashboardData.periodEnd.toISOString()}`;
+                const predictionResponse = await fetch(predictionUrl);
+                const predictionData = await predictionResponse.json();
+
+                if (predictionData.success && predictionData.prediction) {
+                    const p = predictionData.prediction;
+                    const t = predictionData.trend;
+                    const pat = predictionData.patterns;
+                    const next6 = predictionData.nextSixHours;
+
+                    const trendEmoji = t.direction === 'up' ? '📈' : t.direction === 'down' ? '📉' : '➡️';
+                    const trendText = t.direction === 'up' ? '上升' : t.direction === 'down' ? '下降' : '稳定';
+
+                    predictionContext = `
+
+## 🔮 智能预测系统 (基于历史数据分析)
+
+### 周期结束预测
+- **预测总数**: ${p.predicted}条 (置信度: ${p.confidence === 'high' ? '高🟢' : p.confidence === 'medium' ? '中🟡' : '低🔴'})
+- **预测区间**: ${p.range.min} - ${p.range.max}条
+- **推理依据**: ${p.reasoning.join(' | ')}
+
+### 趋势分析
+- ${trendEmoji} **7日均值**: ${t.sevenDayAvg}条/天
+- ${trendEmoji} **30日均值**: ${t.thirtyDayAvg}条/天
+- **趋势**: ${trendText} (${t.changePercent > 0 ? '+' : ''}${t.changePercent}%)
+
+### 周期模式
+- **工作日平均**: ${pat.weekdayAvg}条/天
+- **周末平均**: ${pat.weekendAvg}条/天
+- **今日预期**: ${new Date().getDay() === 0 || new Date().getDay() === 6 ? pat.weekendAvg : pat.weekdayAvg}条 (${new Date().getDay() === 0 || new Date().getDay() === 6 ? '周末' : '工作日'})
+
+### 接下来6小时预测
+${next6.map((h: any) => `- ${h.hour}: 预计 ~${h.predicted}条`).join('\n')}
+
+**⚠️ 预测使用说明**: 上述预测基于历史数据统计，回答预测类问题时请直接引用这些数据，不要自己计算。`;
+
+                    console.log('[Prediction] Got prediction:', p.predicted, 'confidence:', p.confidence);
+                }
+            } catch (predictionError) {
+                console.warn('[Prediction] Fetch failed (non-critical):', predictionError);
+            }
+
             // ========== Period Stats: Fetch historical period data ==========
             let periodStatsContext = '';
             try {
@@ -388,7 +434,7 @@ ${dailyLines}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext() + dateQueryContext + periodStatsContext + heatmapContext + ragContext,
+                    context: buildContext() + dateQueryContext + predictionContext + periodStatsContext + heatmapContext + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content
