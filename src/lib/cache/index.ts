@@ -213,6 +213,41 @@ export async function getCachedTweets(periodStart: number, limit: number = 100):
     }
 }
 
+/**
+ * Get ALL cached tweets (no period filter)
+ * Used for Recent Tweets table
+ */
+export async function getAllCachedTweets(limit: number = 1000): Promise<Tweet[]> {
+    const client = getClient();
+    if (!client) return [];
+
+    try {
+        const { data, error } = await client
+            .from('cached_tweets')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (error || !data) {
+            console.log('[Cache] No cached tweets found');
+            return [];
+        }
+
+        console.log('[Cache] Found', data.length, 'total cached tweets');
+
+        return data.map(row => ({
+            id: row.id,
+            text: row.text || '',
+            msg: row.msg || '',
+            timestamp: row.created_at || 0,
+            ...(row.raw_data || {})
+        }));
+    } catch (error) {
+        console.error('[Cache] getAllCachedTweets error:', error);
+        return [];
+    }
+}
+
 export async function saveCachedTweets(periodStart: number, tweets: Tweet[]): Promise<boolean> {
     const client = getClient();
     if (!client || tweets.length === 0) return false;
@@ -353,5 +388,61 @@ export async function getHeatmapSummary(startDate?: string, endDate?: string): P
     } catch (error) {
         console.error('[Cache] getHeatmapSummary error:', error);
         return [];
+    }
+}
+
+/**
+ * Get heatmap data in the original API format for the frontend
+ */
+export async function getCachedHeatmapData(): Promise<any> {
+    const client = getClient();
+    if (!client) return { code: 0, data: { posts: [] } };
+
+    try {
+        const { data, error } = await client
+            .from('cached_heatmap')
+            .select('*')
+            .order('date_normalized', { ascending: false });
+
+        if (error || !data) {
+            console.log('[Cache] Heatmap query error:', error);
+            return { code: 0, data: { posts: [] } };
+        }
+
+        // Reconstruct the nested object structure
+        // Format: { date: "Jan 08", "00:00": { tweet: 1, reply: 1 }, ... }
+        const postsMap = new Map<string, any>();
+
+        for (const row of data) {
+            // We group by normalized date to ensure correct grouping, 
+            // but the key in the object is just fields
+            const dateKey = row.date_normalized;
+
+            if (!postsMap.has(dateKey)) {
+                postsMap.set(dateKey, {
+                    date: row.date_str
+                });
+            }
+
+            const dayObj = postsMap.get(dateKey);
+
+            // Add hourly data if counts exist
+            if (row.tweet_count > 0 || row.reply_count > 0) {
+                dayObj[row.hour] = {};
+                if (row.tweet_count > 0) dayObj[row.hour].tweet = row.tweet_count;
+                if (row.reply_count > 0) dayObj[row.hour].reply = row.reply_count;
+            }
+        }
+
+        return {
+            code: 0,
+            data: {
+                // Return array of day objects
+                posts: Array.from(postsMap.values())
+            }
+        };
+    } catch (error) {
+        console.error('[Cache] getCachedHeatmapData error:', error);
+        return { code: 0, data: { posts: [] } };
     }
 }

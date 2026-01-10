@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { activeDataSource } from '@/lib/data-sources';
-import { getCachedTweets, saveCachedTweets } from '@/lib/cache';
+import { getCachedTweets, saveCachedTweets, getAllCachedTweets } from '@/lib/cache';
 
 // GET /api/tweets?limit=<number>&t=<timestamp>
 // Strategy: API first, cache fallback
@@ -21,9 +21,15 @@ export async function GET(request: Request) {
         }
 
         // Step 3: API returned empty, try cache fallback
-        if (periodStart) {
+        if (tweets.length === 0) {
             console.log('[API] API returned 0 tweets, trying cache...');
-            const cached = await getCachedTweets(periodStart, limit);
+
+            // If periodStart specified, get tweets for that period
+            // Otherwise get all cached tweets
+            const cached = periodStart
+                ? await getCachedTweets(periodStart, limit)
+                : await getAllCachedTweets(limit);
+
             if (cached.length > 0) {
                 console.log('[API] Using', cached.length, 'cached tweets');
                 return NextResponse.json({ tweets: cached, fromCache: true });
@@ -36,12 +42,14 @@ export async function GET(request: Request) {
         console.error('[API] tweets error:', error);
 
         // Step 4: On API error, try cache fallback
-        if (periodStart) {
-            const cached = await getCachedTweets(periodStart, limit);
-            if (cached.length > 0) {
-                console.log('[API] API failed, using', cached.length, 'cached tweets');
-                return NextResponse.json({ tweets: cached, fromCache: true });
-            }
+        console.log('[API] API failed, trying cache fallback...');
+        const cached = periodStart
+            ? await getCachedTweets(periodStart, limit)
+            : await getAllCachedTweets(limit);
+
+        if (cached.length > 0) {
+            console.log('[API] Using', cached.length, 'cached tweets after error');
+            return NextResponse.json({ tweets: cached, fromCache: true });
         }
 
         return NextResponse.json(
