@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timezone
 import calendar
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -183,10 +184,57 @@ async def rebuild_heatmap():
         
     print("🔥 Heatmap rebuild complete!")
 
-from telethon.sessions import StringSession
+
+async def listen_mode(client, bot_entity):
+    print(f"👂 Listening for new messages from {bot_entity}...")
+    print("   (Keep this window open. Updates will be synced in real-time.)")
+    
+    @client.on(events.NewMessage(chats=bot_entity))
+    async def handler(event):
+        print(f"\n⚡ New message received! (ID: {event.message.id})")
+        if event.message.text:
+            parsed = parse_tg_message(event.message.text)
+            if parsed:
+                # 1. Sync the tweet
+                await sync_to_supabase(parsed)
+                
+                # 2. Increment heatmap immediately (lightweight update)
+                # We don't do full rebuild here to be fast
+                ts = parsed['created_at']
+                dt_et = datetime.fromtimestamp(ts - 5*3600, tz=timezone.utc)
+                date_norm = dt_et.strftime("%Y-%m-%d")
+                hour_str = dt_et.strftime("%H:00")
+                date_str = dt_et.strftime("%b %d")
+                
+                # Upsert/Increment logic for heatmap
+                # For simplicity, we just fetch-modify-save or relies on the fact we have a unique row
+                # Let's just do a safe RPC or simple select-update
+                try:
+                    res = supabase.table('cached_heatmap').select('*').match({"date_normalized": date_norm, "hour": hour_str}).execute()
+                    if res.data:
+                        row = res.data[0]
+                        field = 'reply_count' if parsed['is_reply'] else 'tweet_count'
+                        new_count = row[field] + 1
+                        supabase.table('cached_heatmap').update({field: new_count}).eq('id', row['id']).execute()
+                    else:
+                        supabase.table('cached_heatmap').insert({
+                            "date_str": date_str,
+                            "date_normalized": date_norm,
+                            "hour": hour_str,
+                            "tweet_count": 0 if parsed['is_reply'] else 1,
+                            "reply_count": 1 if parsed['is_reply'] else 0
+                        }).execute()
+                    print(f"   🔥 Heatmap updated for {hour_str}")
+                except Exception as e:
+                    print(f"   ⚠️ Heatmap update failed: {e}")
+
+    await client.run_until_disconnected()
 
 async def main():
-    print("🚀 Starting Telegram Crawler & Repair...")
+    import sys
+    mode = "listen" if "--listen" in sys.argv else "sync"
+
+    print(f"🚀 Starting Telegram Crawler ({mode.upper()} mode)...")
     
     # Check if we have a session string (from GitHub Secrets)
     session_string = os.getenv('TG_SESSION_STRING')
@@ -203,23 +251,28 @@ async def main():
     
     try:
         bot_entity = 'ElonTweets_dBot'
-        count = 0
-        async for message in client.iter_messages(bot_entity, limit=1000): # Deep scan
-            if message.text:
-                parsed = parse_tg_message(message.text)
-                if parsed:
-                    await sync_to_supabase(parsed)
-                    count += 1
         
-        print(f"📥 Crawled {count} messages.")
-        
-        # After crawling, rebuild heatmap to ensure accuracy
-        await rebuild_heatmap()
+        if mode == "sync":
+            print(f"📡 Deep syncing history from @{bot_entity}...")
+            count = 0
+            async for message in client.iter_messages(bot_entity, limit=1000):
+                if message.text:
+                    parsed = parse_tg_message(message.text)
+                    if parsed:
+                        await sync_to_supabase(parsed)
+                        count += 1
+            print(f"📥 Crawled {count} messages.")
+            await rebuild_heatmap()
+            print("💡 Tip: Run 'python scripts/telegram_crawler.py --listen' to keep receiving new tweets in real-time!")
+            
+        elif mode == "listen":
+            await listen_mode(client, bot_entity)
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error during execution: {e}")
     finally:
-        await client.disconnect()
+        if mode == "sync":
+            await client.disconnect()
 
 if __name__ == '__main__':
     asyncio.run(main())
