@@ -284,12 +284,30 @@ ${recentTweets.join('\n')}
                 console.warn('[PeriodStats] Fetch failed (non-critical):', statsError);
             }
 
+            // ========== Heatmap Summary: Fetch historical daily activity ==========
+            let heatmapContext = '';
+            try {
+                const heatmapResponse = await fetch('/api/heatmap-summary');
+                const heatmapData = await heatmapResponse.json();
+                if (heatmapData.success && heatmapData.summary) {
+                    const s = heatmapData.summary;
+                    heatmapContext = `\n\n## 📈 历史活动摘要 (热力图数据)
+- 数据范围: ${s.dateRange?.start} 至 ${s.dateRange?.end} (${s.totalDays}天)
+- 总推文: ${s.totalTweets}条, 总回复: ${s.totalReplies}条
+- 日均发推: ${s.avgPerDay}条
+- 最活跃日: ${s.mostActiveDay?.date} (${s.mostActiveDay?.count}条, 高峰${s.mostActiveDay?.peakHour})`;
+                    console.log('[HeatmapSummary] Got summary for', s.totalDays, 'days');
+                }
+            } catch (heatmapError) {
+                console.warn('[HeatmapSummary] Fetch failed (non-critical):', heatmapError);
+            }
+
             const response = await fetch('/api/gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext() + periodStatsContext + ragContext,
+                    context: buildContext() + periodStatsContext + heatmapContext + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content

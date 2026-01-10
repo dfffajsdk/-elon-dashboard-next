@@ -271,3 +271,87 @@ export async function getLatestCacheTime(periodStart: number): Promise<Date | nu
         return null;
     }
 }
+
+// =============================================
+// HEATMAP DATA OPERATIONS
+// =============================================
+
+export interface DailySummary {
+    date: string;
+    dateNormalized: string;
+    totalTweets: number;
+    totalReplies: number;
+    peakHour: string;
+    peakCount: number;
+}
+
+/**
+ * Get heatmap data summary for AI context
+ * Returns daily summaries with peak hours
+ */
+export async function getHeatmapSummary(startDate?: string, endDate?: string): Promise<DailySummary[]> {
+    const client = getClient();
+    if (!client) return [];
+
+    try {
+        let query = client
+            .from('cached_heatmap')
+            .select('*')
+            .order('date_normalized', { ascending: false });
+
+        if (startDate) {
+            query = query.gte('date_normalized', startDate);
+        }
+        if (endDate) {
+            query = query.lte('date_normalized', endDate);
+        }
+
+        const { data, error } = await query;
+
+        if (error || !data) {
+            console.log('[Cache] Heatmap query error:', error);
+            return [];
+        }
+
+        // Group by date and calculate summaries
+        const dateMap = new Map<string, {
+            date: string;
+            dateNormalized: string;
+            totalTweets: number;
+            totalReplies: number;
+            peakHour: string;
+            peakCount: number;
+        }>();
+
+        for (const row of data) {
+            const key = row.date_normalized;
+            const hourTotal = (row.tweet_count || 0) + (row.reply_count || 0);
+
+            if (!dateMap.has(key)) {
+                dateMap.set(key, {
+                    date: row.date_str,
+                    dateNormalized: row.date_normalized,
+                    totalTweets: 0,
+                    totalReplies: 0,
+                    peakHour: row.hour,
+                    peakCount: hourTotal
+                });
+            }
+
+            const entry = dateMap.get(key)!;
+            entry.totalTweets += row.tweet_count || 0;
+            entry.totalReplies += row.reply_count || 0;
+
+            if (hourTotal > entry.peakCount) {
+                entry.peakHour = row.hour;
+                entry.peakCount = hourTotal;
+            }
+        }
+
+        return Array.from(dateMap.values())
+            .sort((a, b) => b.dateNormalized.localeCompare(a.dateNormalized));
+    } catch (error) {
+        console.error('[Cache] getHeatmapSummary error:', error);
+        return [];
+    }
+}
