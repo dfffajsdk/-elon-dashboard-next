@@ -275,7 +275,15 @@ ${recentTweets.join('\n')}
                             month: 'short', day: 'numeric', timeZone: 'America/New_York'
                         });
                         const statusEmoji = p.status === 'ended' ? '✅' : p.status === 'active' ? '🔄' : '⏳';
-                        return `${statusEmoji} ${p.label}周期 (${startDate} 12pm ET - ${endDate} 12pm ET): ${p.count}条推文 [${p.status}]`;
+
+                        // Add detailed breakdown if available
+                        let breakdown = '';
+                        if (p.count > 0 && typeof p.replies === 'number') {
+                            const nonReplies = p.count - p.replies;
+                            breakdown = ` (原创+转+引: ${nonReplies}, 回复: ${p.replies}, RT: ${p.retweets}, Orig: ${p.original})`;
+                        }
+
+                        return `${statusEmoji} ${p.label}周期 (${startDate} 12pm ET - ${endDate} 12pm ET): ${p.count}条${breakdown} [${p.status}]`;
                     });
                     periodStatsContext = '\n\n## 📊 所有周期统计 (从数据库实时计算)\n' + periodLines.join('\n');
                     console.log('[PeriodStats] Got stats for', statsData.periods.length, 'periods');

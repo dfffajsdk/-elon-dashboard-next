@@ -114,6 +114,10 @@ export interface PeriodStats {
     startDate: string;
     endDate: string;
     count: number;
+    replies: number;
+    retweets: number;
+    quotes: number;
+    original: number;
     status: 'ended' | 'active' | 'upcoming';
 }
 
@@ -126,6 +130,18 @@ export async function getAllPeriodStats(): Promise<PeriodStats[]> {
 
     const now = new Date();
     const results: PeriodStats[] = [];
+
+    // Fetch all tweets once to optimize (instead of N queries)
+    // Assuming reasonable dataset size (<10k)
+    let allTweets: any[] = [];
+    try {
+        const { data } = await client
+            .from('cached_tweets')
+            .select('created_at, msg, text, is_reply');
+        if (data) allTweets = data;
+    } catch (e) {
+        console.error('[Cache] Failed to fetch all tweets for stats:', e);
+    }
 
     for (const config of PERIOD_CONFIGS) {
         // Parse dates from config
@@ -145,32 +161,41 @@ export async function getAllPeriodStats(): Promise<PeriodStats[]> {
             status = 'upcoming';
         }
 
-        // Count tweets in this period
-        try {
-            const { count, error } = await client
-                .from('cached_tweets')
-                .select('*', { count: 'exact', head: true })
-                .gte('created_at', startTs)
-                .lt('created_at', endTs);
+        // Filter tweets in memory
+        const tweetsInPeriod = allTweets.filter(t =>
+            t.created_at >= startTs && t.created_at < endTs
+        );
 
-            results.push({
-                id: config.id,
-                label: config.label,
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-                count: error ? 0 : (count || 0),
-                status
-            });
-        } catch {
-            results.push({
-                id: config.id,
-                label: config.label,
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-                count: 0,
-                status
-            });
-        }
+        let replies = 0;
+        let retweets = 0;
+        let quotes = 0; // Hard to distinguish from original without raw data, grouping with original for now
+        let original = 0;
+
+        tweetsInPeriod.forEach(t => {
+            const content = (t.msg || t.text || '').trim();
+            const isReply = t.is_reply || content.startsWith('@');
+
+            if (isReply) {
+                replies++;
+            } else if (content.startsWith('RT @')) {
+                retweets++;
+            } else {
+                original++;
+            }
+        });
+
+        results.push({
+            id: config.id,
+            label: config.label,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            count: tweetsInPeriod.length,
+            replies,
+            retweets,
+            quotes: 0, // Placeholder
+            original,
+            status
+        });
     }
 
     return results;
