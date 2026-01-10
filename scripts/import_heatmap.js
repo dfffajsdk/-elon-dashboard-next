@@ -16,7 +16,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 }
 
 // Read tweet_status.json
-const dataPath = path.join(__dirname, '..', '..', 'antigravity-dashboard', 'public', 'cache', 'tweet_status.json');
+const dataPath = path.join(__dirname, '..', 'public', 'cache', 'tweet_status.json');
 
 if (!fs.existsSync(dataPath)) {
     console.error('tweet_status.json not found at:', dataPath);
@@ -85,7 +85,7 @@ async function importData() {
     for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
 
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/cached_heatmap`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/cached_heatmap?on_conflict=date_normalized,hour`, {
             method: 'POST',
             headers: {
                 'apikey': SUPABASE_SERVICE_KEY,

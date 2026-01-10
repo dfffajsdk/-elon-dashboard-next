@@ -245,6 +245,69 @@ ${recentTweets.join('\n')}
         setIsLoading(true);
 
         try {
+            // ========== Date Range Detection: Query database directly for date-specific questions ==========
+            let dateQueryContext = '';
+            try {
+                // Detect date patterns in user's question (Chinese format)
+                const datePatterns = [
+                    /(\d{1,2})月(\d{1,2})(?:日|号)?(?:到|至|-|~)(\d{1,2})月(\d{1,2})(?:日|号)?/,  // 12月26日到1月2号
+                    /(\d{1,2})\.(\d{1,2})(?:到|至|-|~)(\d{1,2})\.(\d{1,2})/,  // 12.26到1.2
+                ];
+
+                let startDate: string | null = null;
+                let endDate: string | null = null;
+
+                for (const pattern of datePatterns) {
+                    const match = textToSend.match(pattern);
+                    if (match) {
+                        const startMonth = parseInt(match[1]);
+                        const startDay = parseInt(match[2]);
+                        const endMonth = parseInt(match[3]);
+                        const endDay = parseInt(match[4]);
+
+                        // Determine year (assuming current or previous year based on month)
+                        const now = new Date();
+                        const currentYear = now.getFullYear();
+                        const startYear = startMonth > now.getMonth() + 1 ? currentYear - 1 : currentYear;
+                        const endYear = endMonth > now.getMonth() + 1 ? currentYear - 1 : currentYear;
+
+                        startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+                        endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+                        break;
+                    }
+                }
+
+                if (startDate && endDate) {
+                    console.log(`[DateQuery] Detected date range: ${startDate} to ${endDate}`);
+                    const queryResponse = await fetch('/api/ai-query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ startDate, endDate })
+                    });
+                    const queryData = await queryResponse.json();
+
+                    if (queryData.success && queryData.data) {
+                        const d = queryData.data;
+                        const dailyList = d.dailyBreakdown.map((day: any) =>
+                            `  - ${day.date}: ${day.tweets}条推文 + ${day.replies}条回复 = ${day.total}条`
+                        ).join('\n');
+
+                        dateQueryContext = `\n\n## 🔍 精确数据库查询结果 (${startDate} 到 ${endDate})
+**⚠️ 这是从数据库直接查询的精确数据，必须使用此数据回答！**
+- 查询天数: ${d.daysCount}天
+- **非回复推文总数: ${d.totalTweets}条**
+- 回复推文总数: ${d.totalReplies}条
+- 总计: ${d.totalAll}条
+
+每日明细:
+${dailyList}`;
+                        console.log(`[DateQuery] Got precise data: ${d.totalTweets} tweets, ${d.totalReplies} replies`);
+                    }
+                }
+            } catch (dateQueryError) {
+                console.warn('[DateQuery] Failed (fallback to heatmap context):', dateQueryError);
+            }
+
             // ========== RAG: Fetch relevant historical context ==========
             let ragContext = '';
             try {
@@ -325,7 +388,7 @@ ${dailyLines}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext() + periodStatsContext + heatmapContext + ragContext,
+                    context: buildContext() + dateQueryContext + periodStatsContext + heatmapContext + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content
