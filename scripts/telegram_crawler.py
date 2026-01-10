@@ -265,7 +265,8 @@ async def main():
         if mode == "sync":
             print(f"📡 Deep syncing history from @{bot_entity}...")
             count = 0
-            async for message in client.iter_messages(bot_entity, limit=1000):
+            # Increase limit to 10,000 to cover 50+ days of history (User requirement)
+            async for message in client.iter_messages(bot_entity, limit=10000):
                 if message.text:
                     parsed = parse_tg_message(message.text)
                     if parsed:
