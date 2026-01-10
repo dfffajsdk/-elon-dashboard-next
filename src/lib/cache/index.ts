@@ -87,15 +87,25 @@ export async function saveCachedCount(periodStart: number, count: number, mtCoun
 // CACHE TWEETS OPERATIONS
 // =============================================
 
-// Period configurations (same as PeriodSelector)
-const PERIOD_CONFIGS = [
-    { id: 'jan9', label: 'Jan 9', startDay: 2, endDay: 9 },
-    { id: 'jan13', label: 'Jan 13', startDay: 6, endDay: 13 },
-    { id: 'jan16', label: 'Jan 16', startDay: 9, endDay: 16 },
-    { id: 'jan20', label: 'Jan 20', startDay: 13, endDay: 20 },
-    { id: 'jan23', label: 'Jan 23', startDay: 16, endDay: 23 },
-    { id: 'jan27', label: 'Jan 27', startDay: 20, endDay: 27 },
-    { id: 'jan30', label: 'Jan 30', startDay: 23, endDay: 30 },
+// Period configurations with explicit dates (to handle cross-year periods)
+interface PeriodConfig {
+    id: string;
+    label: string;
+    startDate: string; // ISO format
+    endDate: string;   // ISO format
+}
+
+const PERIOD_CONFIGS: PeriodConfig[] = [
+    // 2025-2026 cross-year period
+    { id: 'jan2', label: 'Jan 2', startDate: '2025-12-26T12:00:00-05:00', endDate: '2026-01-02T12:00:00-05:00' },
+    // 2026 periods
+    { id: 'jan9', label: 'Jan 9', startDate: '2026-01-02T12:00:00-05:00', endDate: '2026-01-09T12:00:00-05:00' },
+    { id: 'jan13', label: 'Jan 13', startDate: '2026-01-06T12:00:00-05:00', endDate: '2026-01-13T12:00:00-05:00' },
+    { id: 'jan16', label: 'Jan 16', startDate: '2026-01-09T12:00:00-05:00', endDate: '2026-01-16T12:00:00-05:00' },
+    { id: 'jan20', label: 'Jan 20', startDate: '2026-01-13T12:00:00-05:00', endDate: '2026-01-20T12:00:00-05:00' },
+    { id: 'jan23', label: 'Jan 23', startDate: '2026-01-16T12:00:00-05:00', endDate: '2026-01-23T12:00:00-05:00' },
+    { id: 'jan27', label: 'Jan 27', startDate: '2026-01-20T12:00:00-05:00', endDate: '2026-01-27T12:00:00-05:00' },
+    { id: 'jan30', label: 'Jan 30', startDate: '2026-01-23T12:00:00-05:00', endDate: '2026-01-30T12:00:00-05:00' },
 ];
 
 export interface PeriodStats {
@@ -118,9 +128,9 @@ export async function getAllPeriodStats(): Promise<PeriodStats[]> {
     const results: PeriodStats[] = [];
 
     for (const config of PERIOD_CONFIGS) {
-        // Create timestamps for period (12:00 PM ET = 17:00 UTC in winter)
-        const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
-        const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
+        // Parse dates from config
+        const startDate = new Date(config.startDate);
+        const endDate = new Date(config.endDate);
 
         const startTs = Math.floor(startDate.getTime() / 1000);
         const endTs = Math.floor(endDate.getTime() / 1000);
