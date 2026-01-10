@@ -31,6 +31,16 @@ export default function Home() {
     } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
       setIsDarkMode(false);
     }
+
+    // Auto-analyze: Check for newly completed periods on page load
+    fetch('/api/auto-analyze', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.analyzed > 0) {
+          console.log(`[AutoAnalyze] Saved ${data.analyzed} new period(s)`);
+        }
+      })
+      .catch(e => console.warn('[AutoAnalyze] Failed (non-critical):', e));
   }, []);
 
   const toggleTheme = () => {
