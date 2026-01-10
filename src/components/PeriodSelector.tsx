@@ -70,9 +70,9 @@ export function createPeriods(): Period[] {
         const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
         const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
 
-        // LOGIC: Show period IF it has started (now >= startDate)
-        // Include expired periods so users can view historical data
-        if (now >= startDate) {
+        // LOGIC: Show period IF it is currently active (started but not ended)
+        // Hide expired periods
+        if (now >= startDate && now < endDate) {
             const dayName = getDayName(2026, 1, config.endDay);
             const label = `Jan ${config.endDay} ${dayName}`;
 
