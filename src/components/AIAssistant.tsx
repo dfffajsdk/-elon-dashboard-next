@@ -405,6 +405,22 @@ ${next6.map((h: any) => `- ${h.hour}: 预计 ~${h.predicted}条`).join('\n')}
                 console.warn('[PeriodStats] Fetch failed (non-critical):', statsError);
             }
 
+            // ========== Cached Counts: Historical period statistics (accurate) ==========
+            let cachedCountsContext = '';
+            try {
+                const countsResponse = await fetch('/api/cached-counts');
+                const countsData = await countsResponse.json();
+                if (countsData.success && countsData.periods?.length > 0) {
+                    const countLines = countsData.periods.map((p: any) => {
+                        return `- ${p.startDate}~${p.endDate}: 非回复${p.nonReplyCount}条, 回复${p.replyCount}条, 总计${p.totalCount}条`;
+                    });
+                    cachedCountsContext = '\n\n## 📊 历史周期精确统计 (从 cached_counts 读取, 12pm ET 周期)\n' + countLines.join('\n');
+                    console.log('[CachedCounts] Got stats for', countsData.periods.length, 'periods');
+                }
+            } catch (countsError) {
+                console.warn('[CachedCounts] Fetch failed (non-critical):', countsError);
+            }
+
             // ========== Heatmap Summary: Fetch historical daily activity ==========
             let heatmapContext = '';
             try {
@@ -434,7 +450,7 @@ ${dailyLines}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: textToSend,
-                    context: buildContext() + dateQueryContext + predictionContext + periodStatsContext + heatmapContext + ragContext,
+                    context: buildContext() + dateQueryContext + predictionContext + cachedCountsContext + periodStatsContext + heatmapContext + ragContext,
                     history: messages.slice(-6).map(m => ({
                         role: m.role,
                         content: m.content
