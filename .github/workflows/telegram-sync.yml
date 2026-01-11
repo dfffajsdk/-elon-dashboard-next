@@ -2,7 +2,7 @@ name: Sync Tesla Tweets to Supabase
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Run every 5 minutes (GitHub fastest supported interval)
+    # - cron: '*/5 * * * *' # Run every 5 minutes (PAUSED by user request)
   workflow_dispatch: # Allow manual trigger
 
 jobs:
