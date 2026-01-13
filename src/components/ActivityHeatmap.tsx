@@ -83,10 +83,9 @@ const ActivityHeatmap: React.FC = () => {
     }, [apiData, currentET.dateStr, currentET.normDate]);
 
     const isPast = (rowDate: string, hour: number) => {
-        const [rowYear, rowMonth, rowDay] = (rowDate || '').split('-').map(Number);
+        if (!rowDate) return true;
+        const [rowYear, rowMonth, rowDay] = rowDate.split('-').map(Number);
         const [nowYear, nowMonth, nowDay] = currentET.normDate.split('-').map(Number);
-
-        if (!rowYear) return true;
 
         if (rowYear < nowYear) return true;
         if (rowYear > nowYear) return false;
@@ -102,189 +101,117 @@ const ActivityHeatmap: React.FC = () => {
 
         if (count === 0) {
             return past
-                ? 'bg-slate-200/20 dark:bg-zinc-800/20 border border-slate-300/10 dark:border-white/5'
-                : 'bg-transparent border border-dashed border-slate-200/20 dark:border-white/5';
+                ? 'bg-[#1a2e3a] dark:bg-[#11222c] border border-white/5' // Solid dark for passed
+                : 'bg-transparent border border-dashed border-white/10'; // Transparent for future
         }
 
-        let colorClasses = '';
-        let shadowClasses = '';
+        let bgClass = '';
+        if (count <= 2) bgClass = 'bg-[#ffe4b5]'; // Moccasin
+        else if (count <= 5) bgClass = 'bg-[#ffcc99]'; // Peach
+        else if (count <= 10) bgClass = 'bg-[#ffb366]'; // Light Orange
+        else bgClass = 'bg-[#ff9933]'; // Orange
 
-        if (count <= 2) {
-            colorClasses = 'bg-amber-400 dark:bg-amber-500';
-            shadowClasses = 'shadow-[0_0_12px_rgba(251,191,36,0.3)]';
-        } else if (count <= 5) {
-            colorClasses = 'bg-orange-400 dark:bg-orange-500';
-            shadowClasses = 'shadow-[0_0_15px_rgba(251,146,60,0.4)]';
-        } else if (count <= 10) {
-            colorClasses = 'bg-orange-600 dark:bg-orange-600';
-            shadowClasses = 'shadow-[0_0_20px_rgba(234,88,12,0.5)]';
-        } else {
-            colorClasses = 'bg-red-600 dark:bg-red-600';
-            shadowClasses = 'shadow-[0_0_25px_rgba(220,38,38,0.6)]';
-        }
+        return `${bgClass} text-[#1a1a1a] font-bold border border-white/10`;
+    };
 
-        const borderClass = past ? 'ring-1 ring-white/10' : 'border border-white/5';
-
-        return `${colorClasses} ${shadowClasses} ${borderClass} text-white scale-[1.02] hover:scale-125 z-10`;
+    const getLT = (etHour: number) => {
+        // ET (UTC-5) to LT (UTC+8) = +13h
+        const ltHour = (etHour + 13) % 24;
+        return ltHour.toString().padStart(2, '0') + ':00';
     };
 
     return (
-        <div className="bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-orange-500/5 blur-[100px] pointer-events-none rounded-full"></div>
-            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-amber-500/5 blur-[100px] pointer-events-none rounded-full"></div>
-
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4 relative z-20">
+        <div className="bg-[#141414] p-6 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative text-white">
+            <div className="flex items-center justify-between mb-6 gap-4 relative z-20">
                 <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <span className="w-1.5 h-10 bg-gradient-to-b from-orange-400 to-red-600 rounded-full block"></span>
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-black text-text-primary tracking-tighter uppercase italic">Activity Stream</h2>
-                        <div className="flex items-center gap-2 mt-1 px-2 py-0.5 bg-green-500/5 rounded-lg w-fit border border-green-500/10">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500/60"></div>
-                            <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
-                                ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}
-                            </span>
-                        </div>
-                    </div>
-
-                    <label className="flex items-center gap-3 cursor-pointer ml-8 bg-slate-50 dark:bg-zinc-800/30 px-4 py-2 rounded-2xl border border-slate-200 dark:border-white/5 hover:border-orange-500/30 transition-all hover:bg-slate-100 dark:hover:bg-zinc-800/50 group active:scale-95 shadow-sm">
+                    <h2 className="text-lg font-bold">Activity Heatmap</h2>
+                    <label className="flex items-center gap-2 cursor-pointer ml-4">
                         <Checkbox
                             checked={includeReplies}
                             onChange={e => setIncludeReplies(e.target.checked)}
-                            className="hidden"
+                            className="dark-checkbox"
                         />
-                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${includeReplies ? 'bg-orange-500 border-orange-500' : 'border-zinc-400 group-hover:border-orange-400'}`}>
-                            {includeReplies && <svg className="w-2 h-2 text-white fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" /></svg>}
-                        </div>
-                        <span className={`text-[11px] font-bold uppercase tracking-wider transition-colors ${includeReplies ? 'text-orange-500' : 'text-text-tertiary group-hover:text-text-secondary'}`}>
-                            Include Replies
-                        </span>
+                        <span className="text-xs text-gray-400">Include Replies</span>
                     </label>
                 </div>
-
-                <div className="p-3 bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100 dark:border-white/5 rounded-2xl flex items-center gap-5 text-[9px] font-bold tracking-widest text-text-tertiary">
-                    <div className="flex items-center gap-2 opacity-60">
-                        <span className="w-3 h-3 bg-slate-200/50 dark:bg-zinc-800/40 rounded border border-slate-300/30"></span>
-                        <span>PASSED</span>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-60">
-                        <span className="w-3 h-3 bg-transparent rounded border border-dashed border-zinc-500/30"></span>
-                        <span>FUTURE</span>
-                    </div>
-                    <div className="w-px h-3 bg-slate-200 dark:bg-zinc-800"></div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 bg-orange-500 rounded shadow-md"></span>
-                        <span>LIVE DATA</span>
-                    </div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-500 font-mono">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#11222c] rounded-sm"></span> Passed</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 border border-dashed border-white/20 rounded-sm"></span> Future</span>
                 </div>
             </div>
 
-            <div className="relative overflow-x-auto pb-10 custom-scrollbar scroll-smooth">
-                <div className="min-w-[1000px] relative">
-                    {/* Header Scale */}
-                    <div className="flex mb-10 items-end relative">
-                        <div className="w-24 shrink-0"></div>
-                        <div className="flex-1 grid grid-cols-24 gap-1.5 relative px-0">
+            <div className="relative overflow-x-auto pb-4 custom-scrollbar">
+                <div className="min-w-[960px]">
+                    {/* Header with ET and LT */}
+                    <div className="grid grid-cols-[100px_1fr_60px] mb-2 text-[10px] font-bold text-gray-400">
+                        <div className="flex flex-col justify-center px-2">
+                            <div>ET:</div>
+                            <div>LT:</div>
+                        </div>
+                        <div className="grid grid-cols-24 gap-px relative">
                             {hours.map(h => (
-                                <div key={h} className="text-center group/hour relative h-6 flex flex-col justify-end">
-                                    <span className={`text-[10px] font-bold transition-colors block ${h === currentET.hour ? 'text-orange-500' : 'text-text-tertiary opacity-60'}`}>
-                                        {h.toString().padStart(2, '0')}
-                                    </span>
+                                <div key={h} className="text-center flex flex-col justify-center h-8">
+                                    <div>{h.toString().padStart(2, '0')}</div>
+                                    <div className="opacity-60">{((h + 13) % 24).toString().padStart(2, '0')}</div>
                                 </div>
                             ))}
 
-                            {/* Avatar Marker - Cleaner positioning */}
+                            {/* Avatar Tracker */}
                             <div
-                                className="absolute -top-2 bottom-[-1000px] transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) z-30 pointer-events-none"
+                                className="absolute top-0 bottom-[-1000px] transition-all duration-700 z-30 pointer-events-none"
                                 style={{
                                     left: `${((currentET.hour + currentET.minute / 60) / 24) * 100}%`,
                                     transform: 'translateX(-50%)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center'
                                 }}
                             >
-                                <div className="relative flex flex-col items-center">
-                                    <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-orange-400 via-amber-400 to-red-500 animate-bounce-subtle shadow-xl">
-                                        <div className="w-full h-full rounded-full border-2 border-slate-900 overflow-hidden bg-black">
-                                            <img
-                                                src="https://pbs.twimg.com/profile_images/1780044485541699584/p_isra3f_400x400.jpg"
-                                                alt="Elon"
-                                                className="w-full h-full object-cover scale-110"
-                                            />
-                                        </div>
+                                <div className="flex flex-col items-center">
+                                    <div className="w-6 h-6 rounded-full border border-white shadow-lg overflow-hidden bg-black mt-1">
+                                        <img
+                                            src="https://pbs.twimg.com/profile_images/1780044485541699584/p_isra3f_400x400.jpg"
+                                            alt="Elon"
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
-                                    <div className="w-[1.5px] h-full bg-gradient-to-b from-orange-400/30 via-orange-400/5 to-transparent mt-3"></div>
+                                    <div className="w-px h-full bg-orange-500/40"></div>
                                 </div>
                             </div>
                         </div>
-                        <div className="w-20 shrink-0 text-right pr-6 text-[10px] font-bold text-text-tertiary tracking-widest uppercase opacity-40 italic">SUM</div>
+                        <div className="flex items-center justify-end px-2 uppercase tracking-tighter opacity-60">Total</div>
                     </div>
 
-                    <Spin spinning={loading} size="large">
-                        <div className="space-y-3 relative z-10">
+                    <Spin spinning={loading}>
+                        <div className="space-y-px">
                             {heatmapRows.map((row) => {
                                 let rowTotal = 0;
-                                const isToday = row.date === currentET.dateStr;
                                 return (
-                                    <div key={row.date} className="flex items-center group/row relative">
-                                        {isToday && (
-                                            <div className="absolute -inset-y-1.5 -inset-x-2 bg-orange-500/[0.03] border-l-2 border-orange-500/20 rounded-r-2xl pointer-events-none"></div>
-                                        )}
-                                        <div className="w-24 shrink-0 relative">
-                                            <div className={`text-[11px] font-bold transition-all uppercase pr-6 text-right ${isToday ? 'text-orange-500' : 'text-text-tertiary opacity-70 group-hover/row:opacity-100 group-hover/row:text-orange-400'}`}>
-                                                {row.date}
-                                            </div>
+                                    <div key={row.date} className="grid grid-cols-[100px_1fr_60px] group">
+                                        <div className="text-[10px] font-medium text-gray-500 flex items-center px-2 group-hover:text-white transition-colors">
+                                            {row.date}
                                         </div>
-
-                                        <div className="flex-1 grid grid-cols-24 gap-1.5 p-1.5 bg-slate-50/20 dark:bg-white/[0.01] rounded-2xl border border-slate-100/50 dark:border-white/5 transition-all group-hover/row:bg-slate-100/30 dark:group-hover/row:bg-white/[0.02]">
+                                        <div className="grid grid-cols-24 gap-px bg-white/5 border border-white/5">
                                             {hours.map(h => {
                                                 const hourKey = h.toString().padStart(2, '0') + ':00';
                                                 const hourData = row[hourKey] || { tweet: 0, reply: 0 };
                                                 const count = includeReplies ? (hourData.tweet + hourData.reply) : hourData.tweet;
                                                 rowTotal += count;
 
-                                                const past = isPast(row._norm || '', h);
-
                                                 return (
                                                     <Tooltip
                                                         key={h}
-                                                        title={
-                                                            <div className="p-2 min-w-[120px]">
-                                                                <div className="font-extrabold border-b border-white/20 mb-2 pb-1 text-orange-400">{row.date} {hourKey}</div>
-                                                                <div className="flex justify-between items-center mb-1 text-xs text-white">
-                                                                    <span>Tweets</span>
-                                                                    <span className="font-black">{hourData.tweet}</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center text-xs text-white/70">
-                                                                    <span>Replies</span>
-                                                                    <span className="font-black">{hourData.reply}</span>
-                                                                </div>
-                                                            </div>
-                                                        }
-                                                        color="#09090b"
-                                                        overlayClassName="heatmap-tooltip"
-                                                        mouseEnterDelay={0.05}
+                                                        title={`${row.date} ${hourKey}: ${hourData.tweet} tweets`}
+                                                        color="#1a1a1a"
                                                     >
                                                         <div
-                                                            className={`h-10 rounded-xl transition-all duration-300 flex items-center justify-center text-xs font-black relative overflow-hidden group/cell ${getCellStyles(count, row._norm, h)}`}
+                                                            className={`h-8 flex items-center justify-center text-[11px] transition-all ${getCellStyles(count, row._norm, h)}`}
                                                         >
                                                             {count > 0 ? count : ''}
-                                                            {/* Very subtle subtle indicator for past time in empty cells */}
-                                                            {count === 0 && past && (
-                                                                <div className="absolute inset-0 bg-slate-400/[0.05] dark:bg-white/[0.02]"></div>
-                                                            )}
                                                         </div>
                                                     </Tooltip>
                                                 );
                                             })}
                                         </div>
-
-                                        <div className="w-20 shrink-0 text-right pr-6 relative">
-                                            <div className={`text-xs font-black transition-all ${rowTotal > 0 ? 'text-orange-500/80' : 'text-text-tertiary opacity-20'}`}>
-                                                {rowTotal}
-                                            </div>
+                                        <div className="flex items-center justify-end px-2 text-[10px] font-bold text-gray-400 bg-white/5 border-y border-r border-white/5">
+                                            {rowTotal}
                                         </div>
                                     </div>
                                 );
@@ -293,6 +220,16 @@ const ActivityHeatmap: React.FC = () => {
                     </Spin>
                 </div>
             </div>
+            <style jsx global>{`
+                .dark-checkbox .ant-checkbox-inner {
+                    background-color: transparent !important;
+                    border-color: #444 !important;
+                }
+                .dark-checkbox .ant-checkbox-checked .ant-checkbox-inner {
+                    background-color: #ff9933 !important;
+                    border-color: #ff9933 !important;
+                }
+            `}</style>
         </div>
     );
 };
