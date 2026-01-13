@@ -101,7 +101,7 @@ const ActivityHeatmap: React.FC = () => {
 
         if (count === 0) {
             return past
-                ? 'bg-slate-400/10 dark:bg-white/[0.03] border border-white/[0.02]' // Subdued past background
+                ? 'bg-zinc-300/[0.15] dark:bg-zinc-700/[0.25] border border-white/[0.04]' // Noticeable past
                 : 'bg-transparent border border-dashed border-white/[0.05]'; // Hollow future
         }
 
@@ -110,20 +110,20 @@ const ActivityHeatmap: React.FC = () => {
 
         if (count <= 2) {
             bgClass = 'bg-orange-400 dark:bg-orange-500';
-            glowClass = 'shadow-[0_0_10px_rgba(251,146,60,0.2)]';
+            glowClass = 'shadow-[0_0_12px_rgba(251,146,60,0.25)]';
         } else if (count <= 5) {
             bgClass = 'bg-orange-600 dark:bg-orange-600';
-            glowClass = 'shadow-[0_0_15px_rgba(234,88,12,0.3)]';
+            glowClass = 'shadow-[0_0_18px_rgba(234,88,12,0.35)]';
         } else {
             bgClass = 'bg-red-600 dark:bg-red-600';
-            glowClass = 'shadow-[0_0_20px_rgba(220,38,38,0.4)]';
+            glowClass = 'shadow-[0_0_24px_rgba(220,38,38,0.45)]';
         }
 
         return `${bgClass} ${glowClass} text-white font-black border border-white/10 ring-1 ring-white/5 scale-[1.02]`;
     };
 
     return (
-        <div className="bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative">
+        <div className="bg-white/95 dark:bg-[#1a1a1a]/95 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden relative">
             <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-orange-500/5 blur-[100px] pointer-events-none rounded-full"></div>
             <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-amber-500/5 blur-[100px] pointer-events-none rounded-full"></div>
 
@@ -157,12 +157,12 @@ const ActivityHeatmap: React.FC = () => {
                     </label>
                 </div>
 
-                <div className="p-3 bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100 dark:border-white/5 rounded-2xl flex items-center gap-5 text-[9px] font-bold tracking-widest text-text-tertiary opacity-80">
+                <div className="p-3 bg-slate-50/80 dark:bg-zinc-900/40 border border-slate-100 dark:border-white/5 rounded-2xl flex items-center gap-5 text-[9px] font-black tracking-widest text-text-tertiary">
                     <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 bg-slate-200/50 dark:bg-zinc-800/40 rounded border border-slate-300/30"></span>
-                        <span>PASSED</span>
+                        <span className="w-3 h-3 bg-zinc-300/40 dark:bg-zinc-700/60 rounded border border-zinc-400/30"></span>
+                        <span className="text-text-secondary">PASSED</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 opacity-50">
                         <span className="w-3 h-3 bg-transparent rounded border border-dashed border-zinc-500/30"></span>
                         <span>FUTURE</span>
                     </div>
@@ -189,25 +189,23 @@ const ActivityHeatmap: React.FC = () => {
                                 </div>
                             ))}
 
-                            {/* Precise Avatar Tracker */}
+                            {/* Precise Avatar Tracker - Laughing Head Edition */}
                             <div
-                                className="absolute -top-4 bottom-[-2000px] transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) z-40 pointer-events-none"
+                                className="absolute -top-10 bottom-[-2000px] transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) z-40 pointer-events-none"
                                 style={{
                                     left: `${((currentET.hour + currentET.minute / 60) / 24) * 100}%`,
                                     transform: 'translateX(-50%)',
                                 }}
                             >
                                 <div className="flex flex-col items-center">
-                                    <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-orange-400 via-white to-red-500 animate-bounce-subtle shadow-xl">
-                                        <div className="w-full h-full rounded-full border-2 border-slate-900 overflow-hidden bg-black">
-                                            <img
-                                                src="https://pbs.twimg.com/profile_images/1780044485541699584/p_isra3f_400x400.jpg"
-                                                alt="Elon"
-                                                className="w-full h-full object-cover scale-110"
-                                            />
-                                        </div>
+                                    <div className="w-16 h-16 animate-bounce-subtle drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+                                        <img
+                                            src="/assets/elon_laugh.png"
+                                            alt="Elon"
+                                            className="w-full h-full object-contain"
+                                        />
                                     </div>
-                                    <div className="w-[1.5px] h-full bg-gradient-to-b from-orange-400/40 via-orange-400/5 to-transparent mt-3"></div>
+                                    <div className="w-[1.5px] h-full bg-gradient-to-b from-orange-500/60 via-orange-500/5 to-transparent mt-1"></div>
                                 </div>
                             </div>
                         </div>
@@ -222,7 +220,7 @@ const ActivityHeatmap: React.FC = () => {
                                 return (
                                     <div key={row.date} className="grid grid-cols-[100px_1fr_60px] group/row relative items-center">
                                         {isToday && (
-                                            <div className="absolute -inset-y-1.5 -inset-x-2 bg-orange-500/[0.03] border-l-2 border-orange-500/20 rounded-r-2xl pointer-events-none"></div>
+                                            <div className="absolute -inset-y-1.5 -inset-x-2 bg-orange-500/[0.04] border-l-2 border-orange-500/20 rounded-r-2xl pointer-events-none"></div>
                                         )}
                                         <div className="w-100 shrink-0 relative">
                                             <div className={`text-[11px] font-black transition-all uppercase pr-6 text-right ${isToday ? 'text-orange-500' : 'text-text-tertiary opacity-70 group-hover/row:opacity-100 group-hover/row:text-orange-400'}`}>
