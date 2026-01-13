@@ -89,11 +89,14 @@ class LocalDatabaseDataSource implements DataSource {
 
             if (error) return { posts: [] };
 
-            // Group by date
+            // Group by date, keeping track of date_normalized for proper sorting
             const dateGroups: Record<string, any> = {};
             (data || []).forEach(row => {
                 if (!dateGroups[row.date_str]) {
-                    dateGroups[row.date_str] = { date: row.date_str };
+                    dateGroups[row.date_str] = {
+                        date: row.date_str,
+                        _dateNormalized: row.date_normalized // Keep for sorting
+                    };
                 }
                 dateGroups[row.date_str][row.hour] = {
                     tweet: row.tweet_count,
@@ -101,8 +104,10 @@ class LocalDatabaseDataSource implements DataSource {
                 };
             });
 
-            // Convert back to array of posts
-            const posts = Object.values(dateGroups);
+            // Convert to array and sort by date_normalized descending (newest first)
+            const posts = Object.values(dateGroups)
+                .sort((a, b) => b._dateNormalized.localeCompare(a._dateNormalized))
+                .map(({ _dateNormalized, ...rest }) => rest); // Remove internal field
 
             // Fetch recent tweets to populate the 't' array for identifying the latest cell
             const { data: recentTweets } = await client
