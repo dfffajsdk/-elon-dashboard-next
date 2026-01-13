@@ -175,7 +175,8 @@ const ActivityHeatmap: React.FC = () => {
                                                         title={`${row.date} ${hourKey}: ${hourData.tweet} tweets, ${hourData.reply} replies`}
                                                         color="#1a1a1a"
                                                     >
-                                                        <div className={`flex-1 h-8 rounded-md transition-all duration-300 hover:scale-110 hover:shadow-md cursor-pointer ${getCellColor(count)}`}>
+                                                        <div className={`flex-1 h-8 rounded-md transition-all duration-300 hover:scale-110 hover:shadow-md cursor-pointer flex items-center justify-center text-[10px] font-bold ${getCellColor(count)} ${count > 0 ? (count <= 5 ? 'text-zinc-900' : 'text-white') : 'text-transparent'}`}>
+                                                            {count > 0 ? count : ''}
                                                         </div>
                                                     </Tooltip>
                                                 );
