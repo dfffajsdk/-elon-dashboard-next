@@ -101,7 +101,7 @@ const ActivityHeatmap: React.FC = () => {
 
         if (count === 0) {
             return past
-                ? 'bg-[#1a2e3a] dark:bg-[#11222c] border border-white/[0.03]' // Obvious dark blue-gray for passed
+                ? 'bg-[#11222c] border border-white/[0.03]' // High-contrast dark for passed
                 : 'bg-transparent border border-dashed border-white/[0.08]'; // Clean future
         }
 
@@ -120,7 +120,7 @@ const ActivityHeatmap: React.FC = () => {
                     <h2 className="text-xl font-black text-text-primary tracking-tighter uppercase italic">Timeline Matrix</h2>
                     <div className="flex items-center gap-2 px-2 py-1 bg-green-500/10 rounded-lg">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-[10px] font-bold text-text-tertiary">ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}</span>
+                        <span className="text-[10px] font-bold text-text-tertiary whitespace-nowrap">ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}</span>
                     </div>
                 </div>
 
@@ -153,10 +153,10 @@ const ActivityHeatmap: React.FC = () => {
                             <div>ET TIME</div>
                             <div className="text-orange-500">LT SYNC</div>
                         </div>
-                        <div className="grid grid-cols-24 gap-1 relative h-10">
+                        <div className="grid grid-cols-24 gap-1 relative h-12">
                             {hours.map(h => (
                                 <div key={h} className="flex flex-col items-center justify-center">
-                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 scale-125' : 'text-text-tertiary opacity-40'}`}>
+                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 scale-110' : 'text-text-tertiary opacity-40'}`}>
                                         {h.toString().padStart(2, '0')}
                                     </span>
                                     <span className="text-[8px] font-bold text-text-tertiary opacity-20 mt-1">
@@ -165,23 +165,25 @@ const ActivityHeatmap: React.FC = () => {
                                 </div>
                             ))}
 
-                            {/* Avatar Tracker */}
+                            {/* Avatar Tracker - Inside a small jumping box */}
                             <div
-                                className="absolute top-[-8px] bottom-[-2000px] transition-all duration-700 pointer-events-none z-30"
+                                className="absolute top-[-4px] bottom-[-2000px] transition-all duration-700 pointer-events-none z-30"
                                 style={{
                                     left: `${((currentET.hour + currentET.minute / 60) / 24) * 100}%`,
                                     transform: 'translateX(-50%)',
                                 }}
                             >
                                 <div className="flex flex-col items-center">
-                                    <div className="w-10 h-10 drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]">
-                                        <img
-                                            src="/assets/elon_laugh.png"
-                                            alt="Elon"
-                                            className="w-full h-full object-contain"
-                                        />
+                                    <div className="w-8 h-8 p-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-xl flex items-center justify-center animate-bounce-subtle">
+                                        <div className="w-full h-full relative">
+                                            <img
+                                                src="/assets/elon_laugh.png"
+                                                alt="Elon"
+                                                className="w-full h-full object-contain scale-110"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="w-[1.5px] h-full bg-orange-500/40"></div>
+                                    <div className="w-[1px] h-full bg-orange-500/30 mt-1"></div>
                                 </div>
                             </div>
                         </div>
