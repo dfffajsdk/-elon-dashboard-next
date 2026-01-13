@@ -76,7 +76,13 @@ const ActivityHeatmap: React.FC = () => {
         const hasCurrentDay = posts.some(p => p.date === currentET.dateStr);
 
         if (!hasCurrentDay && currentET.dateStr) {
-            posts.unshift({ date: currentET.dateStr, _norm: currentET.normDate });
+            posts.push({ date: currentET.dateStr, _norm: currentET.normDate });
+            // Sort by normDate descending
+            posts.sort((a, b) => {
+                if (!a._norm) return 1;
+                if (!b._norm) return -1;
+                return b._norm.localeCompare(a._norm);
+            });
         }
 
         return { heatmapRows: posts, hours: hourArray };
@@ -98,11 +104,13 @@ const ActivityHeatmap: React.FC = () => {
 
     const getCellStyles = (count: number, rowDate: string, hour: number) => {
         const past = isPast(rowDate, hour);
+        const isCurrently = rowDate === currentET.normDate && hour === currentET.hour;
 
         if (count === 0) {
+            if (isCurrently) return 'bg-orange-500/20 border border-orange-500 shadow-[inset_0_0_10px_rgba(249,115,22,0.2)]';
             return past
-                ? 'bg-[#11222c] border border-white/[0.03]' // High-contrast dark for passed
-                : 'bg-transparent border border-dashed border-white/[0.08]'; // Clean future
+                ? 'bg-[#11222c] border border-white/[0.03]'
+                : 'bg-transparent border border-dashed border-white/[0.08]';
         }
 
         let bgClass = '';
@@ -132,12 +140,12 @@ const ActivityHeatmap: React.FC = () => {
                         />
                         <span className="text-[11px] font-bold text-text-tertiary uppercase tracking-wide">Include Replies</span>
                     </label>
-                    <div className="flex items-center gap-4 text-[9px] font-black text-text-tertiary tracking-widest bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2 rounded-xl">
+                    <div className="flex items-center gap-4 text-[9px] font-black text-text-tertiary tracking-widest bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2 rounded-xl border border-white/5">
                         <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 bg-[#11222c] rounded-sm"></span>
+                            <span className="w-2.5 h-2.5 bg-[#11222c] rounded-sm border border-white/5"></span>
                             <span>PASSED</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 opacity-50">
                             <span className="w-2.5 h-2.5 border border-dashed border-zinc-500 rounded-sm"></span>
                             <span>FUTURE</span>
                         </div>
@@ -146,46 +154,24 @@ const ActivityHeatmap: React.FC = () => {
             </div>
 
             <div className="relative overflow-x-auto pb-6 custom-scrollbar scroll-smooth">
-                <div className="min-w-[1000px] px-2">
-                    {/* Unified Grid Header */}
+                <div className="min-w-[1050px] px-2">
+                    {/* Simplified Header */}
                     <div className="grid grid-cols-[120px_1fr_60px] gap-2 mb-4">
                         <div className="flex flex-col justify-center text-[10px] font-black text-text-tertiary text-right pr-4 italic opacity-60">
                             <div>ET TIME</div>
-                            <div className="text-orange-500">LT SYNC</div>
+                            <div className="text-orange-500/60">LT SYNC</div>
                         </div>
-                        <div className="grid grid-cols-24 gap-1 relative h-12">
+                        <div className="grid grid-cols-24 gap-1 h-8">
                             {hours.map(h => (
                                 <div key={h} className="flex flex-col items-center justify-center">
-                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 scale-110' : 'text-text-tertiary opacity-40'}`}>
+                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]' : 'text-text-tertiary opacity-40'}`}>
                                         {h.toString().padStart(2, '0')}
                                     </span>
-                                    <span className="text-[8px] font-bold text-text-tertiary opacity-20 mt-1">
+                                    <span className="text-[8px] font-bold text-text-tertiary opacity-10 mt-0.5">
                                         {((h + 13) % 24).toString().padStart(2, '0')}
                                     </span>
                                 </div>
                             ))}
-
-                            {/* Avatar Tracker - Inside a small jumping box */}
-                            <div
-                                className="absolute top-[-4px] bottom-[-2000px] transition-all duration-700 pointer-events-none z-30"
-                                style={{
-                                    left: `${((currentET.hour + currentET.minute / 60) / 24) * 100}%`,
-                                    transform: 'translateX(-50%)',
-                                }}
-                            >
-                                <div className="flex flex-col items-center">
-                                    <div className="w-8 h-8 p-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-xl flex items-center justify-center animate-bounce-subtle">
-                                        <div className="w-full h-full relative">
-                                            <img
-                                                src="/assets/elon_laugh.png"
-                                                alt="Elon"
-                                                className="w-full h-full object-contain scale-110"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="w-[1px] h-full bg-orange-500/30 mt-1"></div>
-                                </div>
-                            </div>
                         </div>
                         <div className="flex items-center justify-end text-[10px] font-black text-text-tertiary opacity-40 pr-2 italic">SUM</div>
                     </div>
@@ -198,7 +184,7 @@ const ActivityHeatmap: React.FC = () => {
                                 return (
                                     <div key={row.date} className="grid grid-cols-[120px_1fr_60px] gap-2 group/row items-center relative">
                                         {isToday && (
-                                            <div className="absolute -inset-y-1 -left-2 w-[120px] bg-orange-500/5 border-l-2 border-orange-500/20 rounded-r-lg pointer-events-none"></div>
+                                            <div className="absolute -inset-y-1 -left-2 w-[120px] bg-orange-500/[0.03] border-l-2 border-orange-500/30 rounded-r-lg pointer-events-none"></div>
                                         )}
                                         <div className={`text-[11px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500 scale-105' : 'text-text-tertiary group-hover/row:text-text-secondary'}`}>
                                             {row.date}
@@ -211,6 +197,8 @@ const ActivityHeatmap: React.FC = () => {
                                                 const count = includeReplies ? (hourData.tweet + hourData.reply) : hourData.tweet;
                                                 rowTotal += count;
 
+                                                const isCurrentSlot = isToday && h === currentET.hour;
+
                                                 return (
                                                     <Tooltip
                                                         key={h}
@@ -218,9 +206,28 @@ const ActivityHeatmap: React.FC = () => {
                                                         color="#09090b"
                                                     >
                                                         <div
-                                                            className={`h-9 rounded-lg transition-all duration-300 flex items-center justify-center text-[11px] font-black cursor-crosshair overflow-hidden hover:scale-125 hover:z-10 ${getCellStyles(count, row._norm, h)}`}
+                                                            className={`h-10 rounded-lg transition-all duration-300 flex items-center justify-center text-[11px] font-black cursor-crosshair relative overflow-hidden group/cell ${isCurrentSlot ? 'z-20' : 'hover:scale-125 hover:z-10'} ${getCellStyles(count, row._norm, h)}`}
                                                         >
-                                                            {count > 0 ? count : ''}
+                                                            {isCurrentSlot ? (
+                                                                <div className="w-full h-full flex items-center justify-center p-0.5 relative">
+                                                                    <div className="w-full h-full bg-white/5 backdrop-blur-sm rounded border border-white/20 flex items-center justify-center animate-bounce-subtle z-10">
+                                                                        <img
+                                                                            src="/assets/elon_laugh.png"
+                                                                            alt="Elon"
+                                                                            className="w-full h-full object-contain scale-125"
+                                                                        />
+                                                                    </div>
+                                                                    {count > 0 && (
+                                                                        <span className="absolute bottom-0 right-0.5 text-[8px] bg-red-600 text-white leading-none px-0.5 rounded-sm z-20 font-black shadow-sm border border-white/10">
+                                                                            {count}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    {count > 0 ? count : ''}
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </Tooltip>
                                                 );
@@ -228,7 +235,7 @@ const ActivityHeatmap: React.FC = () => {
                                         </div>
 
                                         <div className="flex items-center justify-end pr-2">
-                                            <div className={`text-[11px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500/80' : 'text-text-tertiary opacity-20'}`}>
+                                            <div className={`text-[11px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500/80 shadow-orange-500/20' : 'text-text-tertiary opacity-20'}`}>
                                                 {rowTotal}
                                             </div>
                                         </div>
