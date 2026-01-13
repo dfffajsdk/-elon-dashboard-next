@@ -161,7 +161,6 @@ const ActivityHeatmap: React.FC = () => {
                 <div className="flex items-center gap-8">
                     <label className="flex items-center gap-2 cursor-pointer group bg-zinc-50 dark:bg-white/[0.02] px-3 py-1.5 rounded-lg border border-zinc-200/50 dark:border-white/[0.03] transition-all">
                         <Checkbox
-                            size="small"
                             checked={includeReplies}
                             onChange={e => setIncludeReplies(e.target.checked)}
                         />
