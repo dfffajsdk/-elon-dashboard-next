@@ -153,7 +153,7 @@ const ActivityHeatmap: React.FC = () => {
                                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
                                 <span className="text-[9px] font-bold text-green-500/80 uppercase tracking-widest leading-none">Live Trace</span>
                             </div>
-                            <span className="text-[10px] font-bold text-text-tertiary opacity-60 leading-none tracking-tight">ET: {currentTime.etDate} {currentTime.etHour}:{currentTime.etMinute.toString().padStart(2, '0')}</span>
+                            <span className="text-[10px] font-bold text-text-secondary leading-none tracking-tight">ET: {currentTime.etDate} {currentTime.etHour}:{currentTime.etMinute.toString().padStart(2, '0')}</span>
                         </div>
                     </div>
                 </div>
@@ -164,15 +164,15 @@ const ActivityHeatmap: React.FC = () => {
                             checked={includeReplies}
                             onChange={e => setIncludeReplies(e.target.checked)}
                         />
-                        <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-wide group-hover:text-text-secondary">Replies</span>
+                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wide">Replies</span>
                     </label>
 
                     <div className="flex items-center gap-5 py-1.5 px-4 bg-zinc-50 dark:bg-white/[0.02] rounded-lg border border-zinc-200/50 dark:border-white/[0.03]">
-                        <div className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-text-tertiary">
+                        <div className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-text-secondary">
                             <span className="w-2.5 h-2.5 bg-slate-800/40 rounded-sm border border-white/5"></span>
                             <span>HISTORY</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-text-tertiary opacity-40">
+                        <div className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-text-secondary opacity-60">
                             <span className="w-2.5 h-2.5 border border-dashed border-zinc-500 rounded-sm"></span>
                             <span>PENDING</span>
                         </div>
@@ -184,9 +184,9 @@ const ActivityHeatmap: React.FC = () => {
                 <div className="min-w-[1080px] px-4">
                     {/* Dual Timezone Header */}
                     <div className="grid grid-cols-[110px_1fr_60px] gap-2 mb-4 items-center relative z-20">
-                        <div className="flex flex-col justify-center text-[9px] font-black text-text-tertiary text-right pr-4 italic opacity-40 space-y-1 mt-1">
-                            <div className="leading-none">ET (US)</div>
-                            <div className="leading-none text-orange-500/50">CST (BJ)</div>
+                        <div className="flex flex-col justify-center text-[9px] font-black text-text-secondary text-right pr-4 italic space-y-1 mt-1">
+                            <div className="leading-none opacity-80">ET (US)</div>
+                            <div className="leading-none text-orange-500/70">CST (BJ)</div>
                         </div>
                         <div className="grid grid-cols-24 gap-1.5 py-1">
                             {hours.map(h => {
@@ -196,17 +196,17 @@ const ActivityHeatmap: React.FC = () => {
                                 const isCurrent = h === currentTime.etHour;
                                 return (
                                     <div key={h} className="flex flex-col items-center justify-center space-y-0.5">
-                                        <span className={`text-[11px] font-black leading-none ${isCurrent ? 'text-orange-500 scale-110' : 'text-text-tertiary opacity-40'}`}>
+                                        <span className={`text-[11px] font-black leading-none ${isCurrent ? 'text-orange-500 scale-110' : 'text-text-secondary opacity-60'}`}>
                                             {h.toString().padStart(2, '0')}:00
                                         </span>
-                                        <span className={`text-[10px] font-bold leading-none ${isCurrent ? 'text-orange-500/60' : 'text-text-tertiary opacity-10'}`}>
+                                        <span className={`text-[10px] font-bold leading-none ${isCurrent ? 'text-orange-500/80' : 'text-text-secondary opacity-30'}`}>
                                             {cstH.toString().padStart(2, '0')}:00
                                         </span>
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="flex items-center justify-end text-[9px] font-black text-text-tertiary opacity-30 pr-4 italic">SUM</div>
+                        <div className="flex items-center justify-end text-[9px] font-black text-text-secondary opacity-60 pr-4 italic">SUM</div>
                     </div>
 
                     <Spin spinning={loading} size="large">
@@ -219,7 +219,7 @@ const ActivityHeatmap: React.FC = () => {
 
                                 return (
                                     <div key={row.date} className="grid grid-cols-[110px_1fr_60px] gap-2 group/row items-center relative">
-                                        <div className={`text-[10px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500' : 'text-text-tertiary opacity-30 group-hover/row:opacity-100 group-hover/row:text-text-secondary'}`}>
+                                        <div className={`text-[10px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500' : 'text-text-secondary opacity-60 group-hover/row:opacity-100'}`}>
                                             {row.date}
                                         </div>
 
@@ -266,7 +266,7 @@ const ActivityHeatmap: React.FC = () => {
                                         </div>
 
                                         <div className="flex items-center justify-end pr-4">
-                                            <div className={`text-[10px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500/70' : 'text-text-tertiary opacity-10'}`}>
+                                            <div className={`text-[10px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500/80' : 'text-text-secondary opacity-30'}`}>
                                                 {rowTotal}
                                             </div>
                                         </div>
