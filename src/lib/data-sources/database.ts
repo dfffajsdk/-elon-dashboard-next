@@ -115,10 +115,10 @@ class LocalDatabaseDataSource implements DataSource {
                 };
             });
 
-            // Convert to array and ensure descenting order by actual date
+            // Convert to array and ensure descending order by actual date
             const posts = Array.from(dateGroups.values())
                 .sort((a, b) => b._sortKey.localeCompare(a._sortKey))
-                .map(({ _sortKey, ...rest }) => rest);
+                .map(({ _sortKey, ...rest }) => ({ ...rest, _norm: _sortKey }));
 
             // Get latest tweet timestamp for "current" cell logic
             const { data: recentTweets } = await client
