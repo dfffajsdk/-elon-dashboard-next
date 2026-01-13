@@ -80,39 +80,47 @@ class LocalDatabaseDataSource implements DataSource {
             const client = getClient();
             if (!client) return { posts: [] };
 
-            // Fetch recent heatmap data
+            // Fetch heatmap data, ordered by date descending
             const { data, error } = await client
                 .from('cached_heatmap')
-                .select('*')
+                .select('date_str, date_normalized, hour, tweet_count, reply_count')
                 .order('date_normalized', { ascending: false })
-                .limit(24 * 60); // Last 60 days
+                .limit(24 * 90); // Last 90 days max
 
-            if (error) return { posts: [] };
+            if (error) {
+                console.error('[DatabaseDS] Heatmap query error:', error);
+                return { posts: [] };
+            }
 
-            // Group by date, keeping track of date_normalized for proper sorting
-            const dateGroups: Record<string, any> = {};
+            // Group by date_normalized (unique key) to avoid date_str collisions
+            const dateGroups = new Map<string, any>();
+
             (data || []).forEach(row => {
-                if (!dateGroups[row.date_str]) {
-                    dateGroups[row.date_str] = {
+                const key = row.date_normalized; // Use normalized date as key
+
+                if (!dateGroups.has(key)) {
+                    dateGroups.set(key, {
                         date: row.date_str,
-                        _dateNormalized: row.date_normalized // Keep for sorting
-                    };
+                        _sortKey: row.date_normalized
+                    });
                 }
-                dateGroups[row.date_str][row.hour] = {
-                    tweet: row.tweet_count,
-                    reply: row.reply_count
+
+                const group = dateGroups.get(key)!;
+                group[row.hour] = {
+                    tweet: row.tweet_count || 0,
+                    reply: row.reply_count || 0
                 };
             });
 
-            // Convert to array and sort by date_normalized descending (newest first)
-            const posts = Object.values(dateGroups)
-                .sort((a, b) => b._dateNormalized.localeCompare(a._dateNormalized))
-                .map(({ _dateNormalized, ...rest }) => rest); // Remove internal field
+            // Convert to array, sort by date descending, remove internal sort key
+            const posts = Array.from(dateGroups.values())
+                .sort((a, b) => b._sortKey.localeCompare(a._sortKey))
+                .map(({ _sortKey, ...rest }) => rest);
 
-            // Fetch recent tweets to populate the 't' array for identifying the latest cell
+            // Get latest tweet timestamp for "current" indicator
             const { data: recentTweets } = await client
                 .from('cached_tweets')
-                .select('created_at, id')
+                .select('created_at')
                 .order('created_at', { ascending: false })
                 .limit(1);
 
