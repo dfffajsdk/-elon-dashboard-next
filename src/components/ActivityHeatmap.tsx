@@ -219,7 +219,7 @@ const ActivityHeatmap: React.FC = () => {
 
                                 return (
                                     <div key={row.date} className="grid grid-cols-[110px_1fr_60px] gap-2 group/row items-center relative">
-                                        <div className={`text-[10px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500' : 'text-text-secondary opacity-60 group-hover/row:opacity-100'}`}>
+                                        <div className={`text-[13px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500' : 'text-text-secondary group-hover/row:opacity-100'}`}>
                                             {row.date}
                                         </div>
 
@@ -266,7 +266,7 @@ const ActivityHeatmap: React.FC = () => {
                                         </div>
 
                                         <div className="flex items-center justify-end pr-4">
-                                            <div className={`text-[10px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500/80' : 'text-text-secondary opacity-30'}`}>
+                                            <div className={`text-[13px] font-black transition-all ${rowTotal > 0 ? 'text-orange-500' : 'text-text-secondary'}`}>
                                                 {rowTotal}
                                             </div>
                                         </div>

@@ -86,7 +86,7 @@ class LocalDatabaseDataSource implements DataSource {
                 .select('date_str, date_normalized, hour, tweet_count, reply_count')
                 .order('date_normalized', { ascending: false })
                 .order('hour', { ascending: true }) // Keep hours internal chronological
-                .limit(24 * 90); // Last 90 days max
+                .limit(24 * 365); // Last 365 days max
 
             if (error) {
                 console.error('[DatabaseDS] Heatmap query error:', error);
