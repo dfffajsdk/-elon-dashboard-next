@@ -14,10 +14,9 @@ export async function GET() {
             return NextResponse.json(cached);
         }
 
-        // NOTE: When using localDatabase (which reads from cached_heatmap),
-        // we should NOT re-save the data as it causes a feedback loop
-        // where date strings get re-parsed and corrupted.
-        // Only save when using external data sources like elontweets.live.
+        // Save live data to cache asynchronously (fire and forget)
+        console.log('[API] Got live heatmap, saving to cache...');
+        saveCachedHeatmapData(status).catch(err => console.error('[API] Failed to save heatmap cache:', err));
 
         return NextResponse.json(status);
     } catch (error) {
