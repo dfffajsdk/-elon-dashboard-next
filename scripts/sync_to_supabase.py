@@ -90,21 +90,32 @@ def main():
     
     # Read heatmap from MySQL
     print("\n6. Reading heatmap from MySQL...")
-    cursor.execute("SELECT * FROM cached_heatmap ORDER BY date_normalized DESC")
+    # Filter out future-dated corruption (anything > 2026-02-01)
+    cursor.execute("SELECT * FROM cached_heatmap WHERE date_normalized <= '2026-02-01' ORDER BY date_normalized DESC")
     heatmap = cursor.fetchall()
-    print(f"   Found {len(heatmap)} heatmap entries")
+    print(f"   Found {len(heatmap)} valid heatmap entries")
     
     # Upload heatmap to Supabase
     print("\n7. Uploading heatmap to Supabase...")
     for i in range(0, len(heatmap), batch_size):
         batch = heatmap[i:i+batch_size]
-        records = [{
-            "date_str": h["date_str"],
-            "date_normalized": str(h["date_normalized"]),
-            "hour": h["hour"],
-            "tweet_count": h["tweet_count"] or 0,
-            "reply_count": h["reply_count"] or 0
-        } for h in batch]
+        records = []
+        for h in batch:
+            # Convert string hour "HH:mm" to integer HH
+            try:
+                hour_str = h["hour"]
+                hour_int = int(hour_str.split(':')[0]) if ':' in hour_str else int(hour_str)
+            except (ValueError, TypeError):
+                hour_int = 0
+                
+            records.append({
+                "date_str": h["date_str"],
+                "date_normalized": str(h["date_normalized"]),
+                "hour": hour_int,
+                "tweet_count": h["tweet_count"] or 0,
+                "reply_count": h["reply_count"] or 0,
+                "metadata": {}
+            })
         
         try:
             supabase.table('cached_heatmap').upsert(records, on_conflict='date_normalized, hour').execute()
