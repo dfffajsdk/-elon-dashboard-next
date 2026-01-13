@@ -92,86 +92,11 @@ export default function Home() {
     periodEnd: activePeriod.endDate,
   });
 
-  // Generate milestones based on period tweet count
-  const milestones = useMemo(() => {
-    const count = periodTweetCount;
-    const targets = [200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580];
+  // Milestones placeholder for now
+  const milestones = useMemo(() => [], []);
 
-    const now = new Date();
-    const daysRemaining = Math.max(0, (activePeriod.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    return targets.map(target => {
-      let status: 'pass' | 'current' | 'future' = 'future';
-      const deficit = count - target; // count 520, target 540 -> deficit -20
-
-      if (count >= target) {
-        status = 'pass';
-      } else if (count >= target - 20) {
-        status = 'current';
-      }
-
-      const absoluteGap = target - count;
-      const daysRemaining = Math.max(0, (activePeriod.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const rate = daysRemaining > 0 ? Math.ceil(absoluteGap / daysRemaining) : absoluteGap;
-
-      // Progress towards this milestone (relative to previous 20-tweet chunk)
-      // e.g. if we are at 530, progress towards 540 is 10/20 = 50%
-      const progress = Math.max(0, Math.min(1, (count - (target - 20)) / 20));
-
-      return {
-        target,
-        status,
-        rate: (status === 'current' || status === 'future') ? `${rate}/day` : undefined,
-        deficit: (status === 'current' || status === 'future') ? absoluteGap : undefined,
-        progress: status === 'current' ? progress : 0
-      };
-    });
-  }, [periodTweetCount, activePeriod]);
-
-  // Pacing info from data
-  const pacingItems = useMemo(() => {
-    if (!allTweets?.length) return [];
-
-    const sortedByTime = [...allTweets].sort((a: any, b: any) => {
-      const aTime = a.timestr || a.timestamp || 0;
-      const bTime = b.timestr || b.timestamp || 0;
-      return bTime - aTime;
-    });
-    const latestTweet: any = sortedByTime[0];
-    const latestTimestamp = latestTweet.timestr || latestTweet.timestamp || 0;
-
-    const now = new Date();
-    const todayET = new Date(now.toLocaleString("en-US", { timeZone: 'America/New_York' }));
-    todayET.setHours(0, 0, 0, 0);
-    const todayStartTimestamp = Math.floor(todayET.getTime() / 1000);
-
-    const todayTweets = sortedByTime.filter((t: any) => {
-      const ts = t.timestr || t.timestamp || 0;
-      return ts >= todayStartTimestamp;
-    });
-    const firstTodayTweet: any = todayTweets[todayTweets.length - 1];
-    const firstTodayTimestamp = firstTodayTweet?.timestr || firstTodayTweet?.timestamp || 0;
-
-    const formatDateTimeET = (timestamp: number) => {
-      if (!timestamp) return "--";
-      const date = new Date(timestamp * 1000);
-      const month = date.toLocaleDateString("en-US", { timeZone: 'America/New_York', month: 'short' });
-      const day = date.toLocaleDateString("en-US", { timeZone: 'America/New_York', day: 'numeric' });
-      const time = date.toLocaleTimeString("en-US", {
-        timeZone: 'America/New_York',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      return `${month} ${day}, ${time} ET`;
-    };
-
-    return [
-      { label: 'Time since last activity', value: '', isTimer: true, timerStartTimestamp: latestTimestamp },
-      { label: 'Last one (ET)', value: formatDateTimeET(latestTimestamp) },
-      { label: 'First today (ET)', value: formatDateTimeET(firstTodayTimestamp) },
-    ];
-  }, [allTweets]);
+  // Pacing info placeholder
+  const pacingItems = useMemo(() => [], []);
 
   // Don't render until mounted to avoid hydration mismatch
   if (!mounted) {
