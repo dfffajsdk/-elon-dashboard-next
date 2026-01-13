@@ -29,8 +29,8 @@ const ActivityHeatmap: React.FC = () => {
             });
             const parts = etFormatter.formatToParts(now);
             const year = parts.find(p => p.type === 'year')?.value || '';
-            const month = parts.find(p => p.type === 'month')?.value || '';
-            const day = parts.find(p => p.type === 'day')?.value || '';
+            const month = parts.find(p => p.type === 'month')?.value || ''; // e.g., "Jan"
+            const day = parts.find(p => p.type === 'day')?.value || ''; // e.g., "13"
             const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
             const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
 
@@ -38,7 +38,7 @@ const ActivityHeatmap: React.FC = () => {
             const normDate = `${year}-${monthNum}-${day}`;
 
             setCurrentET({
-                dateStr: `${month} ${day}`,
+                dateStr: `${month} ${day}`, // "Jan 13"
                 normDate: normDate,
                 hour: hour,
                 minute: minute
@@ -73,7 +73,9 @@ const ActivityHeatmap: React.FC = () => {
         if (!apiData?.posts) return { heatmapRows: [], hours: hourArray };
 
         let posts = [...apiData.posts];
-        const hasCurrentDay = posts.some(p => p.date === currentET.dateStr);
+        // Normalize search to prevent case or whitespace mismatches
+        const searchDate = currentET.dateStr.toLowerCase().trim();
+        const hasCurrentDay = posts.some(p => p.date?.toLowerCase().trim() === searchDate);
 
         if (!hasCurrentDay && currentET.dateStr) {
             posts.push({ date: currentET.dateStr, _norm: currentET.normDate });
@@ -107,7 +109,7 @@ const ActivityHeatmap: React.FC = () => {
         const isCurrently = rowDate === currentET.normDate && hour === currentET.hour;
 
         if (count === 0) {
-            if (isCurrently) return 'bg-orange-500/20 border border-orange-500 shadow-[inset_0_0_10px_rgba(249,115,22,0.2)]';
+            if (isCurrently) return 'bg-orange-500/10 border-2 border-orange-500/60 shadow-[0_0_15px_rgba(249,115,22,0.3)] anim-pulse-border';
             return past
                 ? 'bg-[#11222c] border border-white/[0.03]'
                 : 'bg-transparent border border-dashed border-white/[0.08]';
@@ -126,21 +128,21 @@ const ActivityHeatmap: React.FC = () => {
             <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4 px-2">
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-black text-text-primary tracking-tighter uppercase italic">Timeline Matrix</h2>
-                    <div className="flex items-center gap-2 px-2 py-1 bg-green-500/10 rounded-lg">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-[10px] font-bold text-text-tertiary whitespace-nowrap">ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}</span>
+                        <span className="text-[10px] font-bold text-text-tertiary whitespace-nowrap tracking-wide">ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer group bg-zinc-100 dark:bg-zinc-800/30 px-3 py-1.5 rounded-xl border border-transparent hover:border-orange-500/30 transition-all">
                         <Checkbox
                             checked={includeReplies}
                             onChange={e => setIncludeReplies(e.target.checked)}
                         />
-                        <span className="text-[11px] font-bold text-text-tertiary uppercase tracking-wide">Include Replies</span>
+                        <span className="text-[11px] font-bold text-text-tertiary uppercase tracking-wide group-hover:text-text-secondary">Include Replies</span>
                     </label>
-                    <div className="flex items-center gap-4 text-[9px] font-black text-text-tertiary tracking-widest bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-4 text-[9px] font-black text-text-tertiary tracking-widest bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 rounded-xl border border-white/5">
                         <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 bg-[#11222c] rounded-sm border border-white/5"></span>
                             <span>PASSED</span>
@@ -155,7 +157,7 @@ const ActivityHeatmap: React.FC = () => {
 
             <div className="relative overflow-x-auto pb-6 custom-scrollbar scroll-smooth">
                 <div className="min-w-[1050px] px-2">
-                    {/* Simplified Header */}
+                    {/* Simplified Header - No Avatar Tracker Here */}
                     <div className="grid grid-cols-[120px_1fr_60px] gap-2 mb-4">
                         <div className="flex flex-col justify-center text-[10px] font-black text-text-tertiary text-right pr-4 italic opacity-60">
                             <div>ET TIME</div>
@@ -164,7 +166,7 @@ const ActivityHeatmap: React.FC = () => {
                         <div className="grid grid-cols-24 gap-1 h-8">
                             {hours.map(h => (
                                 <div key={h} className="flex flex-col items-center justify-center">
-                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]' : 'text-text-tertiary opacity-40'}`}>
+                                    <span className={`text-[11px] font-black leading-none ${h === currentET.hour ? 'text-orange-500 scale-110 drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]' : 'text-text-tertiary opacity-40'}`}>
                                         {h.toString().padStart(2, '0')}
                                     </span>
                                     <span className="text-[8px] font-bold text-text-tertiary opacity-10 mt-0.5">
@@ -180,11 +182,15 @@ const ActivityHeatmap: React.FC = () => {
                         <div className="space-y-1.5 pb-4">
                             {heatmapRows.map((row) => {
                                 let rowTotal = 0;
-                                const isToday = row.date === currentET.dateStr;
+                                // Robust case-insensitive match
+                                const rowDateNorm = row.date?.toLowerCase().trim();
+                                const todayDateNorm = currentET.dateStr.toLowerCase().trim();
+                                const isToday = rowDateNorm === todayDateNorm;
+
                                 return (
                                     <div key={row.date} className="grid grid-cols-[120px_1fr_60px] gap-2 group/row items-center relative">
                                         {isToday && (
-                                            <div className="absolute -inset-y-1 -left-2 w-[120px] bg-orange-500/[0.03] border-l-2 border-orange-500/30 rounded-r-lg pointer-events-none"></div>
+                                            <div className="absolute -inset-y-1 -left-2 w-[120px] bg-orange-500/[0.04] border-l-2 border-orange-500/40 rounded-r-lg pointer-events-none"></div>
                                         )}
                                         <div className={`text-[11px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500 scale-105' : 'text-text-tertiary group-hover/row:text-text-secondary'}`}>
                                             {row.date}
@@ -206,11 +212,11 @@ const ActivityHeatmap: React.FC = () => {
                                                         color="#09090b"
                                                     >
                                                         <div
-                                                            className={`h-10 rounded-lg transition-all duration-300 flex items-center justify-center text-[11px] font-black cursor-crosshair relative overflow-hidden group/cell ${isCurrentSlot ? 'z-20' : 'hover:scale-125 hover:z-10'} ${getCellStyles(count, row._norm, h)}`}
+                                                            className={`h-10 rounded-lg transition-all duration-300 flex items-center justify-center text-[11px] font-black cursor-crosshair relative overflow-hidden group/cell ${isCurrentSlot ? 'z-30' : 'hover:scale-125 hover:z-10'} ${getCellStyles(count, row._norm, h)}`}
                                                         >
                                                             {isCurrentSlot ? (
                                                                 <div className="w-full h-full flex items-center justify-center p-0.5 relative">
-                                                                    <div className="w-full h-full bg-white/5 backdrop-blur-sm rounded border border-white/20 flex items-center justify-center animate-bounce-subtle z-10">
+                                                                    <div className="w-full h-full bg-white/10 backdrop-blur-md rounded border border-white/40 flex items-center justify-center animate-bounce-subtle z-10 shadow-lg">
                                                                         <img
                                                                             src="/assets/elon_laugh.png"
                                                                             alt="Elon"
@@ -218,7 +224,7 @@ const ActivityHeatmap: React.FC = () => {
                                                                         />
                                                                     </div>
                                                                     {count > 0 && (
-                                                                        <span className="absolute bottom-0 right-0.5 text-[8px] bg-red-600 text-white leading-none px-0.5 rounded-sm z-20 font-black shadow-sm border border-white/10">
+                                                                        <span className="absolute -bottom-0.5 -right-0.5 text-[8px] bg-red-600 text-white leading-none px-1 py-0.5 rounded-sm z-20 font-black shadow-sm border border-white/20">
                                                                             {count}
                                                                         </span>
                                                                     )}
@@ -246,6 +252,16 @@ const ActivityHeatmap: React.FC = () => {
                     </Spin>
                 </div>
             </div>
+            <style jsx global>{`
+                @keyframes pulse-border {
+                    0% { border-color: rgba(249, 115, 22, 0.4); }
+                    50% { border-color: rgba(249, 115, 22, 1); }
+                    100% { border-color: rgba(249, 115, 22, 0.4); }
+                }
+                .anim-pulse-border {
+                    animation: pulse-border 2s infinite ease-in-out;
+                }
+            `}</style>
         </div>
     );
 };
