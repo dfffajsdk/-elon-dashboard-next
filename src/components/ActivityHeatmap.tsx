@@ -7,17 +7,26 @@ const ActivityHeatmap: React.FC = () => {
     const [includeReplies, setIncludeReplies] = useState(false);
     const [apiData, setApiData] = useState<TweetStatusRawResponse | null>(null);
     const [loading, setLoading] = useState(true);
-    const [currentET, setCurrentET] = useState<{ dateStr: string; normDate: string; hour: number; minute: number }>({
-        dateStr: '',
-        normDate: '',
-        hour: 0,
-        minute: 0
+    const [currentTime, setCurrentTime] = useState<{
+        etDate: string;
+        etNormDate: string;
+        etHour: number;
+        etMinute: number;
+        cstHour: number;
+    }>({
+        etDate: '',
+        etNormDate: '',
+        etHour: 0,
+        etMinute: 0,
+        cstHour: 0
     });
 
-    // Update current ET time
+    // Update current times (ET and CST)
     useEffect(() => {
-        const updateET = () => {
+        const updateTime = () => {
             const now = new Date();
+
+            // ET Formatting
             const etFormatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'America/New_York',
                 year: 'numeric',
@@ -31,22 +40,31 @@ const ActivityHeatmap: React.FC = () => {
             const year = parts.find(p => p.type === 'year')?.value || '';
             const month = parts.find(p => p.type === 'month')?.value || '';
             const day = parts.find(p => p.type === 'day')?.value || '';
-            const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-            const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+            const etHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+            const etMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
 
             const monthNum = now.toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit' });
-            const normDate = `${year}-${monthNum}-${day}`;
+            const etNormDate = `${year}-${monthNum}-${day}`;
 
-            setCurrentET({
-                dateStr: `${month} ${day}`,
-                normDate: normDate,
-                hour: hour,
-                minute: minute
+            // CST (Beijing) Formatting - simplified hour only for the grid comparison
+            const cstFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Shanghai',
+                hour: '2-digit',
+                hour12: false
+            });
+            const cstHour = parseInt(cstFormatter.format(now));
+
+            setCurrentTime({
+                etDate: `${month} ${day}`,
+                etNormDate: etNormDate,
+                etHour: etHour,
+                etMinute: etMinute,
+                cstHour: cstHour
             });
         };
 
-        updateET();
-        const interval = setInterval(updateET, 10000);
+        updateTime();
+        const interval = setInterval(updateTime, 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -73,11 +91,11 @@ const ActivityHeatmap: React.FC = () => {
         if (!apiData?.posts) return { heatmapRows: [], hours: hourArray };
 
         let posts = [...apiData.posts];
-        const searchDate = currentET.dateStr.toLowerCase().trim();
+        const searchDate = currentTime.etDate.toLowerCase().trim();
         const hasCurrentDay = posts.some(p => p.date?.toLowerCase().trim() === searchDate);
 
-        if (!hasCurrentDay && currentET.dateStr) {
-            posts.push({ date: currentET.dateStr, _norm: currentET.normDate });
+        if (!hasCurrentDay && currentTime.etDate) {
+            posts.push({ date: currentTime.etDate, _norm: currentTime.etNormDate });
             posts.sort((a, b) => {
                 if (!a._norm) return 1;
                 if (!b._norm) return -1;
@@ -86,12 +104,12 @@ const ActivityHeatmap: React.FC = () => {
         }
 
         return { heatmapRows: posts, hours: hourArray };
-    }, [apiData, currentET.dateStr, currentET.normDate]);
+    }, [apiData, currentTime.etDate, currentTime.etNormDate]);
 
     const isPast = (rowDate: string, hour: number) => {
         if (!rowDate) return true;
         const [rowYear, rowMonth, rowDay] = rowDate.split('-').map(Number);
-        const [nowYear, nowMonth, nowDay] = currentET.normDate.split('-').map(Number);
+        const [nowYear, nowMonth, nowDay] = currentTime.etNormDate.split('-').map(Number);
 
         if (rowYear < nowYear) return true;
         if (rowYear > nowYear) return false;
@@ -99,12 +117,12 @@ const ActivityHeatmap: React.FC = () => {
         if (rowMonth > nowMonth) return false;
         if (rowDay < nowDay) return true;
         if (rowDay > nowDay) return false;
-        return hour < currentET.hour;
+        return hour < currentTime.etHour;
     };
 
     const getCellStyles = (count: number, rowDate: string, hour: number) => {
         const past = isPast(rowDate, hour);
-        const isCurrently = rowDate === currentET.normDate && hour === currentET.hour;
+        const isCurrently = rowDate === currentTime.etNormDate && hour === currentTime.etHour;
 
         if (count === 0) {
             if (isCurrently) return 'bg-orange-500/10 border border-orange-500/40';
@@ -133,9 +151,9 @@ const ActivityHeatmap: React.FC = () => {
                         <div className="flex items-center gap-2 mt-1">
                             <div className="px-1.5 py-0.5 bg-green-500/10 border border-green-500/20 rounded flex items-center gap-1.5">
                                 <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
-                                <span className="text-[9px] font-bold text-green-500/80 uppercase tracking-widest leading-none">Live</span>
+                                <span className="text-[9px] font-bold text-green-500/80 uppercase tracking-widest leading-none">Live Trace</span>
                             </div>
-                            <span className="text-[10px] font-bold text-text-tertiary opacity-60 leading-none tracking-tight">ET: {currentET.dateStr} {currentET.hour}:{currentET.minute.toString().padStart(2, '0')}</span>
+                            <span className="text-[10px] font-bold text-text-tertiary opacity-60 leading-none tracking-tight">ET: {currentTime.etDate} {currentTime.etHour}:{currentTime.etMinute.toString().padStart(2, '0')}</span>
                         </div>
                     </div>
                 </div>
@@ -150,7 +168,7 @@ const ActivityHeatmap: React.FC = () => {
                         <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-wide group-hover:text-text-secondary">Replies</span>
                     </label>
 
-                    <div className="flex items-center gap-4 py-1.5 px-4 bg-zinc-50 dark:bg-white/[0.02] rounded-lg border border-zinc-200/50 dark:border-white/[0.03]">
+                    <div className="flex items-center gap-5 py-1.5 px-4 bg-zinc-50 dark:bg-white/[0.02] rounded-lg border border-zinc-200/50 dark:border-white/[0.03]">
                         <div className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-text-tertiary">
                             <span className="w-2.5 h-2.5 bg-slate-800/40 rounded-sm border border-white/5"></span>
                             <span>HISTORY</span>
@@ -165,19 +183,29 @@ const ActivityHeatmap: React.FC = () => {
 
             <div className="relative overflow-x-auto pb-10 custom-scrollbar scroll-smooth">
                 <div className="min-w-[1080px] px-4">
-                    {/* Header Scale */}
-                    <div className="grid grid-cols-[110px_1fr_60px] gap-2 mb-4 items-end relative z-20">
-                        <div className="flex flex-col justify-center text-[9px] font-black text-text-tertiary text-right pr-4 italic opacity-40 space-y-1">
-                            <div>ET TIME</div>
+                    {/* Dual Timezone Header */}
+                    <div className="grid grid-cols-[110px_1fr_60px] gap-2 mb-4 items-center relative z-20">
+                        <div className="flex flex-col justify-center text-[9px] font-black text-text-tertiary text-right pr-4 italic opacity-40 space-y-1 mt-1">
+                            <div className="leading-none">ET (US)</div>
+                            <div className="leading-none text-orange-500/50">CST (BJ)</div>
                         </div>
-                        <div className="grid grid-cols-24 gap-1.5 h-6">
-                            {hours.map(h => (
-                                <div key={h} className="flex items-center justify-center">
-                                    <span className={`text-[10px] font-black leading-none ${h === currentET.hour ? 'text-orange-500' : 'text-text-tertiary opacity-30'}`}>
-                                        {h.toString().padStart(2, '0')}
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="grid grid-cols-24 gap-1.5 py-1">
+                            {hours.map(h => {
+                                // Calculate CST for this ET hour column
+                                // CST = ET + 13 hours
+                                const cstH = (h + 13) % 24;
+                                const isCurrent = h === currentTime.etHour;
+                                return (
+                                    <div key={h} className="flex flex-col items-center justify-center space-y-0.5">
+                                        <span className={`text-[11px] font-black leading-none ${isCurrent ? 'text-orange-500 scale-110' : 'text-text-tertiary opacity-40'}`}>
+                                            {h.toString().padStart(2, '0')}:00
+                                        </span>
+                                        <span className={`text-[10px] font-bold leading-none ${isCurrent ? 'text-orange-500/60' : 'text-text-tertiary opacity-10'}`}>
+                                            {cstH.toString().padStart(2, '0')}:00
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className="flex items-center justify-end text-[9px] font-black text-text-tertiary opacity-30 pr-4 italic">SUM</div>
                     </div>
@@ -187,7 +215,7 @@ const ActivityHeatmap: React.FC = () => {
                             {heatmapRows.map((row) => {
                                 let rowTotal = 0;
                                 const rowDateNorm = row.date?.toLowerCase().trim();
-                                const todayDateNorm = currentET.dateStr.toLowerCase().trim();
+                                const todayDateNorm = currentTime.etDate.toLowerCase().trim();
                                 const isToday = rowDateNorm === todayDateNorm;
 
                                 return (
@@ -203,7 +231,7 @@ const ActivityHeatmap: React.FC = () => {
                                                 const count = includeReplies ? (hourData.tweet + hourData.reply) : hourData.tweet;
                                                 rowTotal += count;
 
-                                                const isCurrentSlot = isToday && h === currentET.hour;
+                                                const isCurrentSlot = isToday && h === currentTime.etHour;
 
                                                 return (
                                                     <Tooltip
