@@ -14,11 +14,15 @@ class LocalDatabaseDataSource implements DataSource {
             const client = getClient();
             if (!client) return { count: 0 };
 
-            // Count non-reply tweets for this period
+            // Dynamic Range Query: Count non-reply tweets within [start, start + 7 days)
+            // This supports overlapping periods (e.g. Tue-Tue AND Fri-Fri)
+            const periodEnd = periodStartTimestamp + (7 * 24 * 3600);
+
             const { count, error } = await client
                 .from('cached_tweets')
                 .select('*', { count: 'exact', head: true })
-                .eq('period_start', periodStartTimestamp)
+                .gte('created_at', periodStartTimestamp)
+                .lt('created_at', periodEnd)
                 .eq('is_reply', false);
 
             if (error) {
@@ -45,7 +49,9 @@ class LocalDatabaseDataSource implements DataSource {
                 .limit(limit);
 
             if (periodStartTimestamp) {
-                query = query.eq('period_start', periodStartTimestamp);
+                const periodEnd = periodStartTimestamp + (7 * 24 * 3600);
+                query = query.gte('created_at', periodStartTimestamp)
+                    .lt('created_at', periodEnd);
             }
 
             const { data, error } = await query;
@@ -58,6 +64,7 @@ class LocalDatabaseDataSource implements DataSource {
             return (data || []).map(row => ({
                 id: row.id,
                 text: row.text || row.msg || '',
+                timestamp: row.created_at, // Explicitly map to timestamp
                 created_at: row.created_at,
                 is_reply: row.is_reply,
                 ...row.raw_data
@@ -117,14 +124,19 @@ class LocalDatabaseDataSource implements DataSource {
     }
 
     async getConfig(): Promise<{ periods: Array<{ start: number; end: number }> }> {
-        // Return 7-day periods ending on Thursdays (12pm ET)
-        // 2026-01-16 (Upcoming/Current), Jan 9, Jan 2, Dec 26
+        // Return overlapping periods to support multiple market tabs
+        // Tuesday cycles AND Friday cycles
         return {
             periods: [
-                { start: 1767978000, end: 1768582800 }, // Jan 16 (Current/Upcoming)
-                { start: 1767373200, end: 1767978000 }, // Jan 9 (Completed)
-                { start: 1766768400, end: 1767373200 }, // Jan 2 (Completed)
-                { start: 1766163600, end: 1766768400 }, // Dec 26 (Completed)
+                // Friday Cycles (e.g. Ending Jan 16)
+                { start: 1767978000, end: 1768582800 }, // Jan 9 - Jan 16 (Fri)
+
+                // Tuesday Cycles (e.g. Ending Jan 13)
+                { start: 1767718800, end: 1768323600 }, // Jan 6 - Jan 13 (Tue)
+
+                // Historical
+                { start: 1767373200, end: 1767978000 }, // Jan 2 - Jan 9 (Fri)
+                { start: 1767114000, end: 1767718800 }, // Dec 30 - Jan 6 (Tue)
             ]
         };
     }

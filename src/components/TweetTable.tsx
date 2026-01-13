@@ -25,14 +25,15 @@ const getActionType = (action: string): string => {
 
 const TweetTable: React.FC = () => {
     const [tweets, setTweets] = useState<TweetData[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true); // Initial loading only
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const pageSize = 10;
 
-    const fetchTweets = async () => {
+    const fetchTweets = async (isBackground = false) => {
         try {
-            setLoading(true);
+            if (!isBackground) setLoading(true);
+
             // Fetch directly from Next.js API
             // limit=1000 to get enough data for table
             const response = await fetch('/api/tweets?limit=1000');
@@ -40,15 +41,26 @@ const TweetTable: React.FC = () => {
 
             // API returns { tweets: [...] }
             if (data.tweets && Array.isArray(data.tweets)) {
-                const formattedTweets: TweetData[] = data.tweets.map((tweet: Tweet, index: number) => ({
-                    key: `${tweet.id || tweet.xid || 'tweet'}-${index}`,
-                    count: data.tweets.length - index,
+                // 1. Sort by Time Descending FIRST to ensure stability
+                const sortedRaw = data.tweets.sort((a: any, b: any) => {
+                    // Check created_at first (DB standard), then fallbacks
+                    const tA = Number(a.created_at || a.timestr || a.timestamp || 0);
+                    const tB = Number(b.created_at || b.timestr || b.timestamp || 0);
+                    return tB - tA; // Newest first
+                });
+
+                // 2. Map to display format with stable Count
+                const formattedTweets: TweetData[] = sortedRaw.map((tweet: any, index: number) => ({
+                    key: `${tweet.id || tweet.xid || 'tweet'}-${index}`, // Unique key
+                    count: sortedRaw.length - index, // Stable count based on sorted order
                     time: (() => {
-                        // Handle timestr or timestamp (both could be Unix seconds)
-                        if (typeof tweet.timestr === 'number') return new Date(tweet.timestr * 1000).toISOString();
-                        if (typeof tweet.timestr === 'string' && /^\d{10}$/.test(tweet.timestr)) return new Date(parseInt(tweet.timestr) * 1000).toISOString();
-                        if (tweet.timestamp) return new Date(tweet.timestamp * 1000).toISOString();
-                        return tweet.timestr || new Date().toISOString();
+                        // Priority: created_at (DB) -> timestr (Backup) -> timestamp (API)
+                        const rawTime = tweet.created_at || tweet.timestr || tweet.timestamp;
+
+                        if (typeof rawTime === 'number') return new Date(rawTime * 1000).toISOString();
+                        if (typeof rawTime === 'string' && /^\d{10}$/.test(rawTime)) return new Date(parseInt(rawTime) * 1000).toISOString();
+
+                        return rawTime || new Date().toISOString();
                     })(),
                     type: getActionType(tweet.action || ''),
                     baseId: tweet.baseid || tweet.id || '-',
@@ -62,13 +74,13 @@ const TweetTable: React.FC = () => {
         } catch (error) {
             console.error('Error fetching tweets:', error);
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchTweets();
-        const interval = setInterval(fetchTweets, 60000); // Update every minute
+        fetchTweets(false); // Initial load (show spinner)
+        const interval = setInterval(() => fetchTweets(true), 60000); // Background update (silent)
         return () => clearInterval(interval);
     }, []);
 

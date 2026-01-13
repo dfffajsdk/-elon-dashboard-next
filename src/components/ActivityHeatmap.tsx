@@ -174,7 +174,15 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = () => {
         return Object.values(heatmapData[date] || {}).reduce((sum, cell) => sum + cell.count, 0);
     };
 
-    if (loading) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // ... existing useEffects ...
+
+    if (!mounted || loading) {
         return (
             <div className="bg-white dark:bg-[#1a1a1a] p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-center h-64 transition-all duration-300">
                 <Spin size="large" />
