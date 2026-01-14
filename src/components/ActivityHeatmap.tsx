@@ -7,6 +7,7 @@ const ActivityHeatmap: React.FC = () => {
     const [includeReplies, setIncludeReplies] = useState(false);
     const [apiData, setApiData] = useState<TweetStatusRawResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [daysToShow, setDaysToShow] = useState(30); // Default: show 1 month
     const [currentTime, setCurrentTime] = useState<{
         etDate: string;
         etNormDate: string;
@@ -86,9 +87,9 @@ const ActivityHeatmap: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const { heatmapRows, hours } = useMemo(() => {
+    const { heatmapRows, hours, totalDays } = useMemo(() => {
         const hourArray = Array.from({ length: 24 }, (_, i) => i);
-        if (!apiData?.posts) return { heatmapRows: [], hours: hourArray };
+        if (!apiData?.posts) return { heatmapRows: [], hours: hourArray, totalDays: 0 };
 
         let posts = [...apiData.posts];
         const searchDate = currentTime.etDate.toLowerCase().trim();
@@ -103,8 +104,11 @@ const ActivityHeatmap: React.FC = () => {
             });
         }
 
-        return { heatmapRows: posts, hours: hourArray };
-    }, [apiData, currentTime.etDate, currentTime.etNormDate]);
+        const totalDays = posts.length;
+        const displayedPosts = posts.slice(0, daysToShow);
+
+        return { heatmapRows: displayedPosts, hours: hourArray, totalDays };
+    }, [apiData, currentTime.etDate, currentTime.etNormDate, daysToShow]);
 
     const isPast = (rowDate: string, hour: number) => {
         if (!rowDate) return true;
@@ -275,6 +279,31 @@ const ActivityHeatmap: React.FC = () => {
                             })}
                         </div>
                     </Spin>
+
+                    {/* Pagination Controls */}
+                    {totalDays > daysToShow && (
+                        <div className="flex items-center justify-center mt-6 gap-4">
+                            <button
+                                onClick={() => setDaysToShow(prev => Math.min(prev + 30, totalDays))}
+                                className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white text-sm font-bold rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-orange-500/20"
+                            >
+                                Load More History
+                            </button>
+                            <span className="text-xs font-bold text-text-secondary">
+                                Showing {daysToShow} of {totalDays} days
+                            </span>
+                        </div>
+                    )}
+                    {daysToShow > 30 && (
+                        <div className="flex items-center justify-center mt-3">
+                            <button
+                                onClick={() => setDaysToShow(30)}
+                                className="px-4 py-1.5 text-xs font-bold text-text-secondary hover:text-orange-500 transition-colors"
+                            >
+                                ↑ Collapse to 30 Days
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
