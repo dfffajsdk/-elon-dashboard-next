@@ -9,14 +9,13 @@ class LocalDatabaseDataSource implements DataSource {
     name = 'Local Database (Telegram Sync)';
     config: DataSourceConfig = { name: 'Local Database' };
 
-    async getTweetCount(periodStartTimestamp: number): Promise<{ count: number }> {
+    async getTweetCount(periodStartTimestamp: number, endTimestamp?: number): Promise<{ count: number }> {
         try {
             const client = getClient();
             if (!client) return { count: 0 };
 
-            // Dynamic Range Query: Count non-reply tweets within [start, start + 7 days)
-            // This supports overlapping periods (e.g. Tue-Tue AND Fri-Fri)
-            const periodEnd = periodStartTimestamp + (7 * 24 * 3600);
+            // Use provided endTimestamp or default to 7 days after start
+            const periodEnd = endTimestamp || (periodStartTimestamp + (7 * 24 * 3600));
 
             const { count, error } = await client
                 .from('cached_tweets')
@@ -37,7 +36,7 @@ class LocalDatabaseDataSource implements DataSource {
         }
     }
 
-    async getTweets(limit: number = 100, periodStartTimestamp?: number): Promise<Tweet[]> {
+    async getTweets(limit: number = 100, periodStart?: number, periodEnd?: number): Promise<Tweet[]> {
         try {
             const client = getClient();
             if (!client) return [];
@@ -48,10 +47,10 @@ class LocalDatabaseDataSource implements DataSource {
                 .order('created_at', { ascending: false })
                 .limit(limit);
 
-            if (periodStartTimestamp) {
-                const periodEnd = periodStartTimestamp + (7 * 24 * 3600);
-                query = query.gte('created_at', periodStartTimestamp)
-                    .lt('created_at', periodEnd);
+            if (periodStart) {
+                const end = periodEnd || (periodStart + (7 * 24 * 3600));
+                query = query.gte('created_at', periodStart)
+                    .lt('created_at', end);
             }
 
             const { data, error } = await query;

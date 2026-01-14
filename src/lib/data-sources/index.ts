@@ -16,10 +16,10 @@ export interface DataSource {
     config: DataSourceConfig;
 
     // Get tweet count since a specific timestamp
-    getTweetCount(periodStartTimestamp: number): Promise<{ count: number }>;
+    getTweetCount(periodStartTimestamp: number, endTimestamp?: number): Promise<{ count: number }>;
 
     // Get list of tweets
-    getTweets(limit?: number): Promise<Tweet[]>;
+    getTweets(limit?: number, periodStart?: number, periodEnd?: number): Promise<Tweet[]>;
 
     // Get tweet activity status (for heatmap)
     getTweetStatus(): Promise<TweetStatusRawResponse>;

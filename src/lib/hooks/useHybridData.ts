@@ -19,7 +19,7 @@ interface UseHybridDataOptions {
 }
 
 export function useHybridData(options: UseHybridDataOptions) {
-    const { pollInterval = 60000, periodStart } = options;
+    const { pollInterval = 60000, periodStart, periodEnd } = options;
 
     const [data, setData] = useState<HybridData>({
         allTweets: [],
@@ -42,14 +42,15 @@ export function useHybridData(options: UseHybridDataOptions) {
     const fetchApiData = useCallback(async () => {
         try {
             const timestamp = getPeriodTimestamp();
+            const endTimestamp = Math.floor(periodEnd.getTime() / 1000);
 
             // 1. Fetch tweet count from Next.js API (Server-side proxy)
-            const countResponse = await fetch(`/api/tweet-count?t=${timestamp}`);
+            const countResponse = await fetch(`/api/tweet-count?t=${timestamp}&end=${endTimestamp}`);
             const countData = await countResponse.json();
             const apiCount = countData?.count || 0;
 
             // 2. Fetch tweets list from Next.js API (Server-side proxy)
-            const tweetsResponse = await fetch(`/api/tweets?limit=100&t=${timestamp}`);
+            const tweetsResponse = await fetch(`/api/tweets?limit=100&t=${timestamp}&end=${endTimestamp}`);
             const tweetsData = await tweetsResponse.json();
             // Next.js API returns { tweets: [...] }
             const tweetsList = tweetsData?.tweets || [];

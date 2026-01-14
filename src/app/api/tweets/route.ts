@@ -8,10 +8,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
     const periodStart = searchParams.get('t') ? parseInt(searchParams.get('t')!) : undefined;
+    const periodEnd = searchParams.get('end') ? parseInt(searchParams.get('end')!) : undefined;
 
     try {
         // Step 1: Try fetching from API
-        const tweets = await activeDataSource.getTweets(limit, periodStart);
+        const tweets = await activeDataSource.getTweets(limit, periodStart, periodEnd);
 
         // Step 2: If API returned data, save to cache
         if (tweets.length > 0) {

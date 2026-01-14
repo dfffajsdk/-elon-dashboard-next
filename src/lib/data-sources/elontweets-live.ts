@@ -12,7 +12,7 @@ class ElonTweetsLiveDataSource implements DataSource {
     name = 'ElonTweets.Live';
     config = config;
 
-    async getTweetCount(periodStartTimestamp: number): Promise<{ count: number }> {
+    async getTweetCount(periodStartTimestamp: number, endTimestamp?: number): Promise<{ count: number }> {
         try {
             // Original: ${BASE_URL}/tweet_count?t=${timestamp}
             const url = `${config.baseUrl}/tweet_count?t=${periodStartTimestamp}`;
@@ -42,12 +42,12 @@ class ElonTweetsLiveDataSource implements DataSource {
         }
     }
 
-    async getTweets(limit: number = 100, periodStartTimestamp?: number): Promise<Tweet[]> {
+    async getTweets(limit: number = 100, periodStart?: number, periodEnd?: number): Promise<Tweet[]> {
         try {
             // Default to Jan 2, 2026 12:00 PM ET (Start of current period)
             // 12:00 PM ET = 17:00 UTC (EST is UTC-5)
             const defaultStart = Math.floor(new Date('2026-01-02T12:00:00-05:00').getTime() / 1000);
-            const timestamp = periodStartTimestamp || defaultStart;
+            const timestamp = periodStart || defaultStart;
 
             const url = `${config.baseUrl}/tweets2?version=2&t=${timestamp}&limit=${limit}`;
             console.log('[DataSource] Fetching tweets from:', url);

@@ -62,15 +62,37 @@ export default function Home() {
   }, [isDarkMode, mounted]);
 
   // Period management
-  const periods = useMemo(() => createPeriods(), []);
+  const [periods, setPeriods] = useState(() => createPeriods());
   const [activePeriodId, setActivePeriodId] = useState(() => {
     const all = createPeriods();
     const now = new Date();
     const current = all.find(p => now >= p.startDate && now < p.endDate);
-    // Safety check: if all is empty (shouldn't happen with overlap, but just in case)
     if (!all.length) return '';
     return current ? current.id : all[0].id;
   });
+
+  // Fetch counts for each period
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const updatedPeriods = await Promise.all(periods.map(async (p) => {
+        try {
+          const start = Math.floor(p.startDate.getTime() / 1000);
+          const end = Math.floor(p.endDate.getTime() / 1000);
+          const res = await fetch(`/api/tweet-count?start=${start}&end=${end}`);
+          const data = await res.json();
+          return { ...p, count: data.count || 0 };
+        } catch (e) {
+          return p;
+        }
+      }));
+      setPeriods(updatedPeriods);
+    };
+
+    fetchCounts();
+    // Refresh counts every 2 minutes
+    const interval = setInterval(fetchCounts, 120000);
+    return () => clearInterval(interval);
+  }, [periods.length]); // Re-run if period rotation adds/removes a period
 
   const activePeriod = useMemo(() =>
     periods.find(p => p.id === activePeriodId) || periods[0],

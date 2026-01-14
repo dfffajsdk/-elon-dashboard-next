@@ -7,6 +7,7 @@ export interface Period {
     label: string;
     startDate: Date;
     endDate: Date;
+    count?: number;
 }
 
 interface PeriodSelectorProps {
@@ -23,13 +24,23 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = React.memo(({ periods, act
                     key={period.id}
                     onClick={() => onSelect(period.id)}
                     className={clsx(
-                        "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                        "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2",
                         activePeriodId === period.id
                             ? "bg-white dark:bg-zinc-700 text-primary shadow-sm"
                             : "text-text-tertiary hover:text-text-primary hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                     )}
                 >
-                    {period.label}
+                    <span>{period.label}</span>
+                    {period.count !== undefined && (
+                        <span className={clsx(
+                            "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                            activePeriodId === period.id
+                                ? "bg-primary/10 text-primary"
+                                : "bg-surface-highlight text-text-tertiary"
+                        )}>
+                            {period.count}
+                        </span>
+                    )}
                 </button>
             ))}
         </div>

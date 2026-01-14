@@ -7,16 +7,18 @@ import { getCachedCount, saveCachedCount } from '@/lib/cache';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const start = searchParams.get('start') || searchParams.get('t');
+    const end = searchParams.get('end');
 
     if (!start) {
         return NextResponse.json({ error: 'Missing start parameter' }, { status: 400 });
     }
 
     const periodStartTimestamp = parseInt(start);
+    const periodEndTimestamp = end ? parseInt(end) : undefined;
 
     try {
         // Step 1: Try fetching from API
-        const result = await activeDataSource.getTweetCount(periodStartTimestamp);
+        const result = await activeDataSource.getTweetCount(periodStartTimestamp, periodEndTimestamp);
 
         // Step 2: If API returned valid data, save to cache
         if (result.count > 0) {
