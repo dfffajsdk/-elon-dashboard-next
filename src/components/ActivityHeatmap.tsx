@@ -262,21 +262,22 @@ const ActivityHeatmap: React.FC = () => {
                                                         color="#111"
                                                     >
                                                         <div
-                                                            className={`h-11 rounded-lg transition-all flex items-center justify-center text-lg font-black cursor-pointer relative overflow-hidden group/cell ${isCurrentSlot ? 'z-20 bg-[#1a1a1b] border border-orange-500/30' : 'hover:scale-110 active:scale-95'} ${getCellStyles(count, row._norm, h)}`}
+                                                            className={`h-11 rounded-lg transition-all flex items-center justify-center text-lg font-black cursor-pointer relative overflow-hidden group/cell ${isCurrentSlot ? 'z-20' : 'hover:scale-110 active:scale-95'} ${getCellStyles(count, row._norm, h)}`}
                                                         >
                                                             {isCurrentSlot ? (
-                                                                <div className="w-full h-full flex items-center justify-center relative">
-                                                                    {/* Avatar in top-right corner */}
-                                                                    <img
-                                                                        src="/assets/elon_laugh.png"
-                                                                        alt="Elon"
-                                                                        className="absolute -top-1 -right-1 w-5 h-5 object-contain rounded-full border border-orange-500/50 bg-black/50 z-30"
-                                                                    />
+                                                                <>
+                                                                    {/* Pulsing ring indicator */}
+                                                                    <div className="absolute inset-0 rounded-lg border-2 border-orange-500 animate-pulse" />
+                                                                    <div className="absolute inset-[-2px] rounded-lg border border-orange-500/30 animate-ping" style={{ animationDuration: '2s' }} />
                                                                     {/* Count in center */}
-                                                                    <span className="text-lg font-black text-orange-500 z-20">
+                                                                    <span className="text-lg font-black text-orange-400 z-20 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]">
                                                                         {count > 0 ? count : ''}
                                                                     </span>
-                                                                </div>
+                                                                    {/* Small NOW indicator */}
+                                                                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[6px] font-black text-orange-500 uppercase tracking-wider">
+                                                                        now
+                                                                    </span>
+                                                                </>
                                                             ) : (
                                                                 <span className="relative z-10">{count > 0 ? count : ''}</span>
                                                             )}
