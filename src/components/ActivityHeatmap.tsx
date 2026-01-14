@@ -143,6 +143,22 @@ const ActivityHeatmap: React.FC = () => {
         return `${bgClass} text-white font-black border border-white/10`;
     };
 
+    // Get weekday from normalized date (YYYY-MM-DD) in ET
+    const getWeekday = (normDate: string): string => {
+        if (!normDate) return '';
+        try {
+            // Parse the normalized date and get weekday in ET
+            const date = new Date(normDate + 'T12:00:00-05:00');
+            const etFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'short'
+            });
+            return etFormatter.format(date);
+        } catch {
+            return '';
+        }
+    };
+
     return (
         <div className="bg-white dark:bg-[#0a0a0b] p-8 rounded-[2rem] border border-white/10 dark:border-white/[0.05] shadow-2xl overflow-hidden relative">
             <div className="flex flex-col lg:flex-row items-center justify-between mb-10 gap-6 px-4 relative z-20">
@@ -187,7 +203,7 @@ const ActivityHeatmap: React.FC = () => {
             <div className="relative overflow-x-auto pb-10 custom-scrollbar scroll-smooth">
                 <div className="min-w-[1080px] px-4">
                     {/* Dual Timezone Header */}
-                    <div className="grid grid-cols-[110px_1fr_60px] gap-2 mb-4 items-center relative z-20">
+                    <div className="grid grid-cols-[140px_1fr_60px] gap-2 mb-4 items-center relative z-20">
                         <div className="flex flex-col justify-center text-[9px] font-black text-text-secondary text-right pr-4 italic space-y-1 mt-1">
                             <div className="leading-none opacity-80">ET (US)</div>
                             <div className="leading-none text-orange-500/70">CST (BJ)</div>
@@ -222,9 +238,12 @@ const ActivityHeatmap: React.FC = () => {
                                 const isToday = rowDateNorm === todayDateNorm;
 
                                 return (
-                                    <div key={row.date} className="grid grid-cols-[110px_1fr_60px] gap-2 group/row items-center relative">
-                                        <div className={`text-[16px] font-black transition-all uppercase text-right pr-4 ${isToday ? 'text-orange-500' : 'text-white/90 group-hover/row:opacity-100'}`}>
-                                            {row.date}
+                                    <div key={row.date} className="grid grid-cols-[140px_1fr_60px] gap-2 group/row items-center relative">
+                                        <div className={`text-[14px] font-black transition-all uppercase text-right pr-4 flex items-center justify-end gap-2 ${isToday ? 'text-orange-500' : 'text-white/90 group-hover/row:opacity-100'}`}>
+                                            <span>{row.date}</span>
+                                            <span className={`text-[11px] font-bold ${isToday ? 'text-orange-400' : 'text-text-secondary opacity-60'}`}>
+                                                {getWeekday(row._norm)}
+                                            </span>
                                         </div>
 
                                         <div className="grid grid-cols-24 gap-1.5 p-1 bg-zinc-50/50 dark:bg-white/[0.01] border border-white/[0.02] rounded-xl transition-all group-hover/row:bg-zinc-100/50 dark:group-hover/row:bg-white/[0.015]">

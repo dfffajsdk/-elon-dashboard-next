@@ -39,85 +39,73 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = React.memo(({ periods, act
 // Helper function to create periods based on US Eastern time noon-to-noon
 // Each period is 7 days from 12:00 PM ET to 12:00 PM ET
 // Tab shows the END date of the period
-// IMPORTANT: Strict Absolute Time comparison against ET timestamps
+// Periods auto-rotate: When current time passes noon ET on end day, remove that period and add next one
 export function createPeriods(): Period[] {
     const periods: Period[] = [];
-    const now = new Date(); // Current absolute time (UTC-based internally)
+    const now = new Date();
 
-    // Base periods - each period is 7 days from noon to noon ET
-    const periodConfigs = [
-        { id: 'jan9', endDay: 9, startDay: 2 },
-        { id: 'jan13', endDay: 13, startDay: 6 },
-        { id: 'jan16', endDay: 16, startDay: 9 },
-        { id: 'jan20', endDay: 20, startDay: 13 },
-        { id: 'jan23', endDay: 23, startDay: 16 },
-        { id: 'jan27', endDay: 27, startDay: 20 },
-        { id: 'jan30', endDay: 30, startDay: 23 },
-    ];
+    // Reference periods (user-defined anchor points)
+    // Period 1: Jan 9 12:00 PM ET - Jan 16 12:00 PM ET (labeled "Jan 16")
+    // Period 2: Jan 16 12:00 PM ET - Jan 23 12:00 PM ET (labeled "Jan 23")
+    // etc.
 
-    const getDayName = (year: number, month: number, day: number): string => {
-        // Create date in UTC to avoid local timezone shifts
-        // Use 12:00 UTC just to be safe in middle of day
-        const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    // Reference: Jan 9, 2026 12:00 PM ET = Start of first defined period
+    const REFERENCE_START = new Date('2026-01-09T12:00:00-05:00');
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+    // Calculate how many weeks have passed since reference
+    const msFromRef = now.getTime() - REFERENCE_START.getTime();
+    const weeksFromRef = Math.floor(msFromRef / WEEK_MS);
+
+    // Helper to get day name
+    const getDayName = (date: Date): string => {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         return days[date.getUTCDay()];
     };
 
-    for (const config of periodConfigs) {
-        // Create Absolute Dates corresponding to 12:00 PM ET
-        // 12:00 PM ET is always the anchor. 
-        // We use explicit ISO string with -05:00 offset to guarantee it represents ET noon.
-        const startDate = new Date(`2026-01-${String(config.startDay).padStart(2, '0')}T12:00:00-05:00`);
-        const endDate = new Date(`2026-01-${String(config.endDay).padStart(2, '0')}T12:00:00-05:00`);
-
-        // LOGIC: Show period IF it is currently active (started but not ended)
-        // Hide expired periods
-        if (now >= startDate && now < endDate) {
-            const dayName = getDayName(2026, 1, config.endDay);
-            const label = `Jan ${config.endDay} ${dayName}`;
-
-            periods.push({
-                id: config.id,
-                label,
-                startDate,
-                endDate,
-            });
-        }
-    }
-
-    // FALLBACK: If we are between periods or all finished, show the next upcoming one
-    // or the last one if everything is over.
-    if (periods.length === 0) {
-        // Find first period that hasn't started yet (Upcoming)
-        const upcoming = periodConfigs.find(c => {
-            const start = new Date(`2026-01-${String(c.startDay).padStart(2, '0')}T12:00:00-05:00`);
-            return now < start;
+    // Helper to format date label
+    const formatLabel = (date: Date): string => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        // Get date parts in ET
+        const etFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            month: 'short',
+            day: 'numeric',
+            weekday: 'short'
         });
+        const parts = etFormatter.formatToParts(date);
+        const month = parts.find(p => p.type === 'month')?.value || '';
+        const day = parts.find(p => p.type === 'day')?.value || '';
+        const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+        return `${month} ${day} ${weekday}`;
+    };
 
-        if (upcoming) {
-            const start = new Date(`2026-01-${String(upcoming.startDay).padStart(2, '0')}T12:00:00-05:00`);
-            const end = new Date(`2026-01-${String(upcoming.endDay).padStart(2, '0')}T12:00:00-05:00`);
-            periods.push({
-                id: upcoming.id,
-                label: `Jan ${upcoming.endDay} ${getDayName(2026, 1, upcoming.endDay)}`,
-                startDate: start,
-                endDate: end
-            });
-        } else {
-            // Everyone has started. Show the last one? Or finding the one that *just* expired?
-            // If Jan 13 period ends Jan 13, and Jan 16 starts Jan 9, there shouldn't be gaps unless configs are wrong.
-            // But if somehow empty, default to the last configured period.
-            const last = periodConfigs[periodConfigs.length - 1];
-            const start = new Date(`2026-01-${String(last.startDay).padStart(2, '0')}T12:00:00-05:00`);
-            const end = new Date(`2026-01-${String(last.endDay).padStart(2, '0')}T12:00:00-05:00`);
-            periods.push({
-                id: last.id,
-                label: `Jan ${last.endDay} ${getDayName(2026, 1, last.endDay)}`,
-                startDate: start,
-                endDate: end
-            });
-        }
+    // Generate current period and next period
+    // Current period: starts at (weeksFromRef * WEEK) after reference
+    const currentPeriodStart = new Date(REFERENCE_START.getTime() + Math.max(0, weeksFromRef) * WEEK_MS);
+    const currentPeriodEnd = new Date(currentPeriodStart.getTime() + WEEK_MS);
+
+    // Next period
+    const nextPeriodStart = new Date(currentPeriodEnd.getTime());
+    const nextPeriodEnd = new Date(nextPeriodStart.getTime() + WEEK_MS);
+
+    // Show current period if active (not yet ended)
+    if (now < currentPeriodEnd) {
+        periods.push({
+            id: `period_${currentPeriodEnd.getTime()}`,
+            label: formatLabel(currentPeriodEnd),
+            startDate: currentPeriodStart,
+            endDate: currentPeriodEnd
+        });
     }
+
+    // Always show next period
+    periods.push({
+        id: `period_${nextPeriodEnd.getTime()}`,
+        label: formatLabel(nextPeriodEnd),
+        startDate: nextPeriodStart,
+        endDate: nextPeriodEnd
+    });
 
     return periods;
 }
