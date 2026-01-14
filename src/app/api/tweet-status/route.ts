@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { activeDataSource } from '@/lib/data-sources';
 import { getCachedHeatmapData, saveCachedHeatmapData } from '@/lib/cache';
 
+// Revalidate every 60 seconds
+export const revalidate = 60;
+
 // GET /api/tweet-status
 export async function GET() {
     try {
