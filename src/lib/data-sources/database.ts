@@ -80,23 +80,42 @@ class LocalDatabaseDataSource implements DataSource {
             const client = getClient();
             if (!client) return { posts: [] };
 
-            // Fetch recent heatmap data, ordered by date descending
-            const { data, error } = await client
-                .from('cached_heatmap')
-                .select('date_str, date_normalized, hour, tweet_count, reply_count')
-                .order('date_normalized', { ascending: false })
-                .order('hour', { ascending: true }) // Keep hours internal chronological
-                .limit(24 * 365); // Last 365 days max
+            // Supabase has a 1000-row limit per query, so we paginate to get all data
+            const allData: any[] = [];
+            const pageSize = 1000;
+            let offset = 0;
+            let hasMore = true;
 
-            if (error) {
-                console.error('[DatabaseDS] Heatmap query error:', error);
+            while (hasMore) {
+                const { data, error } = await client
+                    .from('cached_heatmap')
+                    .select('date_str, date_normalized, hour, tweet_count, reply_count')
+                    .order('date_normalized', { ascending: false })
+                    .order('hour', { ascending: true })
+                    .range(offset, offset + pageSize - 1);
+
+                if (error) {
+                    console.error('[DatabaseDS] Heatmap query error:', error);
+                    break;
+                }
+
+                if (data && data.length > 0) {
+                    allData.push(...data);
+                    offset += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            if (allData.length === 0) {
                 return { posts: [] };
             }
 
             // Group by date_normalized (unique key)
             const dateGroups = new Map<string, any>();
 
-            (data || []).forEach(row => {
+            allData.forEach(row => {
                 const key = row.date_normalized;
 
                 if (!dateGroups.has(key)) {
