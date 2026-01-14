@@ -24,28 +24,56 @@ if not all([API_ID, API_HASH, SUPABASE_URL, SUPABASE_KEY]):
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Extremely flexible regex for parsing ElonTweetsD messages
+# Regex patterns for both message formats
+# ElonTweetsD bot format
 RE_HEADER = r"🚨🚨🚨"
-# Match format like: Sat, 10 Jan 2026 14:27:17 GMT
-# Allow markdown backticks and varying whitespace
 RE_POSTED_AT = r"Posted at:.*?(\w{3},\s+\d{1,2}\s+\w{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+[GS]MT)"
-RE_LINK = r"Link:.*?(https://x\.com/elonmusk/status/(\d+))"
+RE_LINK_ELONTWEETS = r"Link:.*?(https://x\.com/elonmusk/status/(\d+))"
 
-def parse_tg_message(text):
+# elonvitalikalerts channel format (uses fxtwitter.com or x.com)
+RE_LINK_FXTWITTER = r"https://(?:fx)?twitter\.com/\w+/status/(\d+)"
+RE_LINK_X = r"https://x\.com/\w+/status/(\d+)"
+
+def parse_tg_message(text, message_date=None):
+    """Parse Telegram message from either ElonTweetsD or elonvitalikalerts"""
     if not text: return None
     try:
-        # Extract Link and ID
-        link_match = re.search(RE_LINK, text)
-        if not link_match:
+        tweet_id = None
+        tweet_link = None
+        
+        # Try ElonTweetsD format first
+        link_match = re.search(RE_LINK_ELONTWEETS, text)
+        if link_match:
+            tweet_id = link_match.group(2)
+            tweet_link = link_match.group(1)
+        else:
+            # Try fxtwitter format (elonvitalikalerts)
+            link_match = re.search(RE_LINK_FXTWITTER, text)
+            if link_match:
+                tweet_id = link_match.group(1)
+                tweet_link = f"https://x.com/elonmusk/status/{tweet_id}"
+            else:
+                # Try x.com format
+                link_match = re.search(RE_LINK_X, text)
+                if link_match:
+                    tweet_id = link_match.group(1)
+                    tweet_link = f"https://x.com/elonmusk/status/{tweet_id}"
+        
+        if not tweet_id:
             return None
         
-        tweet_id = link_match.group(2)
-        tweet_link = link_match.group(1)
+        # Only process elonmusk tweets
+        if "elonmusk" not in text.lower() and "elonmusk" not in tweet_link.lower():
+            # Check if this is actually an Elon tweet
+            if not any(x in text.lower() for x in ['elon', 'musk']):
+                return None
 
-        # Extract Timestamp
-        time_match = re.search(RE_POSTED_AT, text)
+        # Extract Timestamp - try multiple methods
         ts = 0
         date_str = ""
+        
+        # Method 1: ElonTweetsD "Posted at:" format
+        time_match = re.search(RE_POSTED_AT, text)
         if time_match:
             time_str = time_match.group(1).strip()
             time_str = re.sub(r'\s+', ' ', time_str)
@@ -54,42 +82,29 @@ def parse_tg_message(text):
                 dt = dt.replace(tzinfo=timezone.utc)
                 ts = int(dt.timestamp())
                 date_str = dt.strftime("%Y-%m-%d")
-            except Exception as te:
-                print(f"  Timestamp parse error: {te}")
+            except Exception:
+                pass
+        
+        # Method 2: Use message date if timestamp not found
+        if ts == 0 and message_date:
+            if hasattr(message_date, 'timestamp'):
+                ts = int(message_date.timestamp())
+                date_str = message_date.strftime("%Y-%m-%d")
         
         # Determine Type: Reply, Retweet, or Original
         is_reply = False
+        text_lower = text.lower()
         
-        # Check first line for header
-        first_line = text.split('\n')[0]
-        
-        if "Reply" in first_line:
+        # Check for reply indicators
+        if "replied" in text_lower or "`replied`" in text_lower:
             is_reply = True
-        elif "Reposted" in first_line:
-            is_reply = False # Retweet
-        elif "Tweeted" in first_line:
-            is_reply = False # Original
+        elif "retweeted" in text_lower or "reposted" in text_lower or "🔄" in text:
+            is_reply = False  # Retweet counts as non-reply
+        elif "tweeted" in text_lower:
+            is_reply = False
         
-        # Fallback: check content for RT @ if header is missing or weird
-        # But rely primarily on header as it's explicit from the bot
-        
-        # Extract Content
-        lines = text.split('\n')
-        content_lines = []
-        
-        for line in lines:
-            if "🚨🚨🚨" in line: continue
-            if "Posted at:" in line: break
-            if "Link:" in line: break
-            
-            clean_line = line.strip()
-            if clean_line.startswith("┃"):
-                clean_line = clean_line.replace("┃", "").strip()
-            
-            if clean_line:
-                content_lines.append(clean_line)
-
-        content = " ".join(content_lines)
+        # Extract Content - simplified
+        content = text[:500] if len(text) > 500 else text
         
         return {
             "id": tweet_id,
@@ -194,7 +209,7 @@ async def listen_mode(client, bot_entity):
     async def handler(event):
         print(f"\n⚡ New message received! (ID: {event.message.id})")
         if event.message.text:
-            parsed = parse_tg_message(event.message.text)
+            parsed = parse_tg_message(event.message.text, event.message.date)
             if parsed:
                 # 1. Sync the tweet
                 await sync_to_supabase(parsed)
@@ -260,7 +275,10 @@ async def main():
     await client.start()
     
     try:
-        bot_entity = 'ElonTweets_dBot'
+        # Use the active channel instead of the inactive bot
+        # ElonTweets_dBot hasn't sent messages since Jan 11
+        # elonvitalikalerts is actively posting new tweets
+        bot_entity = 'elonvitalikalerts'
         
         if mode == "sync":
             print(f"📡 Deep syncing history from @{bot_entity}...")
@@ -268,7 +286,7 @@ async def main():
             # Increase limit to 10,000 to cover 50+ days of history (User requirement)
             async for message in client.iter_messages(bot_entity, limit=10000):
                 if message.text:
-                    parsed = parse_tg_message(message.text)
+                    parsed = parse_tg_message(message.text, message.date)
                     if parsed:
                         await sync_to_supabase(parsed)
                         count += 1

@@ -265,19 +265,17 @@ const ActivityHeatmap: React.FC = () => {
                                                             className={`h-11 rounded-lg transition-all flex items-center justify-center text-lg font-black cursor-pointer relative overflow-hidden group/cell ${isCurrentSlot ? 'z-20 bg-[#1a1a1b] border border-orange-500/30' : 'hover:scale-110 active:scale-95'} ${getCellStyles(count, row._norm, h)}`}
                                                         >
                                                             {isCurrentSlot ? (
-                                                                <div className="w-full h-full flex items-center justify-center p-1 relative pointer-events-none">
-                                                                    <div className="w-full h-full bg-white/5 rounded-lg flex items-center justify-center">
-                                                                        <img
-                                                                            src="/assets/elon_laugh.png"
-                                                                            alt="Elon"
-                                                                            className="w-full h-full object-contain scale-125"
-                                                                        />
-                                                                    </div>
-                                                                    {count > 0 && (
-                                                                        <span className="absolute bottom-0.5 right-0.5 text-[10px] bg-red-600 text-white px-1 rounded-sm z-20 font-black shadow-sm">
-                                                                            {count}
-                                                                        </span>
-                                                                    )}
+                                                                <div className="w-full h-full flex items-center justify-center relative">
+                                                                    {/* Avatar in top-right corner */}
+                                                                    <img
+                                                                        src="/assets/elon_laugh.png"
+                                                                        alt="Elon"
+                                                                        className="absolute -top-1 -right-1 w-5 h-5 object-contain rounded-full border border-orange-500/50 bg-black/50 z-30"
+                                                                    />
+                                                                    {/* Count in center */}
+                                                                    <span className="text-lg font-black text-orange-500 z-20">
+                                                                        {count > 0 ? count : ''}
+                                                                    </span>
                                                                 </div>
                                                             ) : (
                                                                 <span className="relative z-10">{count > 0 ? count : ''}</span>
