@@ -266,16 +266,17 @@ const ActivityHeatmap: React.FC = () => {
                                                         >
                                                             {isCurrentSlot ? (
                                                                 <>
+                                                                    {/* Transparent Elon avatar as background */}
+                                                                    <img
+                                                                        src="/assets/elon_laugh.png"
+                                                                        alt=""
+                                                                        className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+                                                                    />
                                                                     {/* Pulsing ring indicator */}
                                                                     <div className="absolute inset-0 rounded-lg border-2 border-orange-500 animate-pulse" />
-                                                                    <div className="absolute inset-[-2px] rounded-lg border border-orange-500/30 animate-ping" style={{ animationDuration: '2s' }} />
                                                                     {/* Count in center */}
-                                                                    <span className="text-lg font-black text-orange-400 z-20 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]">
+                                                                    <span className="text-lg font-black text-orange-400 z-20 drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]">
                                                                         {count > 0 ? count : ''}
-                                                                    </span>
-                                                                    {/* Small NOW indicator */}
-                                                                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[6px] font-black text-orange-500 uppercase tracking-wider">
-                                                                        now
                                                                     </span>
                                                                 </>
                                                             ) : (
